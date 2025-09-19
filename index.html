@@ -242,7 +242,7 @@
                 </div>
                 <div id="skinsContainer" style="display:flex;gap:15px;justify-content:center;flex-wrap:wrap;">
                     <button class="skin-btn" data-skin="🐍">Classic (Free)</button>
-                    <button class="skin-btn" data-skin="🦎">Lizard (Free)</button>
+                    <button class="skin-btn" data-skin="🦎" data-price="5">Lizard (5⭐)</button>
                     <button class="skin-btn" data-skin="🦔" data-price="10">Hedgehog (10⭐)</button>
                     <button class="skin-btn" data-skin="🦚" data-price="15">Peacock (15⭐)</button>
                     <button class="skin-btn" data-skin="🐉" data-price="20">Dragon (20⭐)</button>
@@ -250,6 +250,30 @@
                     <button class="skin-btn" data-skin="🦖" data-price="30">T-Rex (30⭐)</button>
                     <button class="skin-btn" data-skin="🧑‍🚀" data-price="40">Astronaut (40⭐)</button>
                 </div>
+            <div class="buy-stars-section" style="margin-top:30px;">
+                <h2>Buy More Stars</h2>
+                <div style="display:flex;gap:20px;justify-content:center;flex-wrap:wrap;">
+                    <div style="background:#232946;border:2px solid gold;border-radius:12px;padding:15px;min-width:160px;display:flex;flex-direction:column;align-items:center;">
+                        <span style="font-size:1.3em;color:gold;">50⭐</span>
+                        <span style="margin:8px 0;">$1.99</span>
+                        <button class="buy-stars-btn" data-amount="50" data-price="1.99" data-method="cashapp">Buy with CashApp</button>
+                        <button class="buy-stars-btn" data-amount="50" data-price="1.99" data-method="paypal">Buy with PayPal</button>
+                    </div>
+                    <div style="background:#232946;border:2px solid gold;border-radius:12px;padding:15px;min-width:160px;display:flex;flex-direction:column;align-items:center;">
+                        <span style="font-size:1.3em;color:gold;">150⭐</span>
+                        <span style="margin:8px 0;">$4.99</span>
+                        <button class="buy-stars-btn" data-amount="150" data-price="4.99" data-method="cashapp">Buy with CashApp</button>
+                        <button class="buy-stars-btn" data-amount="150" data-price="4.99" data-method="paypal">Buy with PayPal</button>
+                    </div>
+                    <div style="background:#232946;border:2px solid gold;border-radius:12px;padding:15px;min-width:160px;display:flex;flex-direction:column;align-items:center;">
+                        <span style="font-size:1.3em;color:gold;">500⭐</span>
+                        <span style="margin:8px 0;">$14.99</span>
+                        <button class="buy-stars-btn" data-amount="500" data-price="14.99" data-method="cashapp">Buy with CashApp</button>
+                        <button class="buy-stars-btn" data-amount="500" data-price="14.99" data-method="paypal">Buy with PayPal</button>
+                    </div>
+                </div>
+                <p id="buyStarsStatus" style="margin-top:10px;color:var(--accent-color);"></p>
+            </div>
                 <p id="skinStatus" style="margin-top:10px;color:var(--accent-color);"></p>
             </div>
             <div class="button-group">
@@ -402,7 +426,7 @@
         // --- Skins and Currency ---
         const skinAccess = {
             '🐍': true, // Classic
-            '🦎': true, // Free
+            '🦎': false, // Lizard
             '🦔': false, // Hedgehog
             '🦚': false, // Peacock
             '🐉': false, // Dragon
@@ -410,6 +434,7 @@
             '🦖': false, // T-Rex
             '🧑‍🚀': false // Astronaut
         };
+    const buyStarsStatus = document.getElementById('buyStarsStatus');
         const skinTailColors = {
             '🐍': '#4CAF50',
             '🦎': '#8BC34A',
@@ -571,15 +596,24 @@
         }
     // --- Skins Selection Logic ---
     function updateSkinAccess() {
-        // Free skins always accessible
+        // Only Classic is always accessible
         skinAccess['🐍'] = true;
-        skinAccess['🦎'] = true;
-        // Paid skins: check localStorage for purchases
         Object.keys(skinAccess).forEach(skin => {
             if (localStorage.getItem('skinPurchased_' + skin) === 'true') {
                 skinAccess[skin] = true;
             }
         });
+    }
+    // --- Buy Stars Logic ---
+    function buyStars(amount, method, price) {
+        showProcessing();
+        setTimeout(() => {
+            hideProcessing();
+            stars += amount;
+            updateCurrencyDisplay();
+            buyStarsStatus.textContent = `Purchased ${amount} Stars for $${price} via ${method === 'cashapp' ? 'CashApp' : 'PayPal'}!`;
+            window.open(method === 'cashapp' ? 'https://cash.app/' : 'https://www.paypal.com/', '_blank');
+        }, 1200);
     }
 
     function updateCurrencyDisplay() {
@@ -625,6 +659,16 @@
             });
         });
     }
+
+    // Buy Stars event listeners
+    document.querySelectorAll('.buy-stars-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+            const amount = parseInt(btn.getAttribute('data-amount'));
+            const price = btn.getAttribute('data-price');
+            const method = btn.getAttribute('data-method');
+            buyStars(amount, method, price);
+        });
+    });
 
         function endGame() {
             clearInterval(gameInterval);
