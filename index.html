@@ -1,0 +1,510 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Galactic Snake</title>
+    <link rel="shortcut icon" href="favicon.ico" type="image/x-icon">
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        /* General Styling */
+        :root {
+            --background-color: #111827;
+            --primary-color: #4CAF50;
+            --accent-color: #3B82F6;
+            --text-color: #E5E7EB;
+            --border-color: #4B5563;
+            --game-over-color: #EF4444;
+        }
+
+        body {
+            font-family: 'Orbitron', sans-serif;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            background-color: var(--background-color);
+            color: var(--text-color);
+            text-align: center;
+        }
+
+        .page-container {
+            width: 90%;
+            max-width: 600px;
+            background: #1F2937;
+            border: 3px solid var(--border-color);
+            border-radius: 15px;
+            box-shadow: 0 0 20px var(--accent-color);
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            animation: fadeIn 0.5s ease-in-out;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        h1 {
+            color: var(--accent-color);
+            text-shadow: 0 0 10px var(--accent-color);
+            margin-top: 0;
+        }
+
+        /* Canvas and Game Elements */
+        #gameCanvas {
+            background-color: #111827;
+            border: 2px solid var(--border-color);
+            box-shadow: 0 0 10px rgba(255, 255, 255, 0.2);
+        }
+
+        .game-info {
+            width: 100%;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 15px;
+        }
+
+        .score-panel, .level-panel {
+            font-size: 1.2em;
+            font-weight: 700;
+        }
+
+        #score, #level {
+            color: var(--primary-color);
+            text-shadow: 0 0 5px var(--primary-color);
+        }
+
+        /* Control Buttons */
+        button {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 1em;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            background-color: var(--accent-color);
+            color: white;
+            box-shadow: 0 0 10px var(--accent-color);
+            transition: all 0.3s ease;
+        }
+
+        button:hover {
+            background-color: #5B9BF8;
+            box-shadow: 0 0 15px var(--accent-color);
+        }
+
+        .button-group button {
+            margin: 5px;
+        }
+
+        /* Modal for Game Over */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 100;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            overflow: auto;
+            background-color: rgba(0, 0, 0, 0.8);
+            backdrop-filter: blur(5px);
+            justify-content: center;
+            align-items: center;
+        }
+
+        .modal-content {
+            background-color: #1F2937;
+            padding: 30px;
+            border: 3px solid var(--border-color);
+            border-radius: 15px;
+            width: 80%;
+            max-width: 400px;
+            text-align: center;
+            box-shadow: 0 0 20px var(--game-over-color);
+        }
+
+        .modal-content h2 {
+            color: var(--game-over-color);
+            text-shadow: 0 0 10px var(--game-over-color);
+        }
+
+        /* High Score Table */
+        #highScoresContainer {
+            margin-top: 20px;
+            background: #1F2937;
+            padding: 15px;
+            border-radius: 10px;
+            border: 2px solid var(--border-color);
+        }
+
+        #highScoresContainer h3 {
+            color: var(--accent-color);
+            margin-bottom: 15px;
+        }
+
+        #highScoresTable {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 10px;
+        }
+
+        #highScoresTable th, #highScoresTable td {
+            padding: 8px;
+            border: 1px solid var(--border-color);
+            color: var(--text-color);
+        }
+
+        #highScoresTable th {
+            background-color: #3B82F6;
+            color: white;
+        }
+
+        #highScoresTable tr:nth-child(even) {
+            background-color: #2D3748;
+        }
+
+        /* Hide pages by default */
+        .page {
+            display: none;
+        }
+        .page.active {
+            display: flex;
+        }
+        
+        /* Main Menu Styling */
+        #main-menu .button-group {
+            margin-top: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+        
+        /* Responsive Design */
+        @media (max-width: 600px) {
+            h1 {
+                font-size: 1.8em;
+            }
+            .score-panel p, .level-panel p {
+                font-size: 1em;
+            }
+            button {
+                font-size: 0.9em;
+                padding: 8px 16px;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <div id="main-menu" class="page active">
+        <div class="page-container">
+            <h1>Galactic Snake</h1>
+            <div class="button-group">
+                <button id="playGameButton">Play Game</button>
+                <button id="viewHighScoresButton">High Scores</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="game-page" class="page">
+        <div class="page-container">
+            <h1>Galactic Snake</h1>
+            <canvas id="gameCanvas"></canvas>
+            <div class="game-info">
+                <div class="score-panel">
+                    <p>Score: <span id="score">0</span></p>
+                </div>
+                <div class="level-panel">
+                    <p>Level: <span id="level">1</span></p>
+                </div>
+                <div class="controls-panel">
+                    <button id="backToMenuButton">Back to Menu</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="high-scores-page" class="page">
+        <div class="page-container">
+            <h1>High Scores</h1>
+            <div id="highScoresContainer">
+                <h3>Leaderboard</h3>
+                <table id="highScoresTable">
+                    <thead>
+                        <tr>
+                            <th>Rank</th>
+                            <th>Name</th>
+                            <th>Score</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <!-- High scores will be inserted here by JavaScript -->
+                    </tbody>
+                </table>
+            </div>
+            <div class="button-group">
+                <button id="backToMenuFromHighScores">Back to Menu</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Game Over Modal -->
+    <div id="gameOverModal" class="modal">
+        <div class="modal-content">
+            <h2>Game Over</h2>
+            <p id="finalScore"></p>
+            <p>Enter your name for the leaderboard:</p>
+            <input type="text" id="playerName" maxlength="10" placeholder="Your Name">
+            <button id="submitScoreButton">Submit Score</button>
+            <button id="restartButton">Restart</button>
+        </div>
+    </div>
+
+    <script>
+        // --- DOM Elements ---
+        const mainMenu = document.getElementById('main-menu');
+        const gamePage = document.getElementById('game-page');
+        const highScoresPage = document.getElementById('high-scores-page');
+        const playGameButton = document.getElementById('playGameButton');
+        const viewHighScoresButton = document.getElementById('viewHighScoresButton');
+        const backToMenuButton = document.getElementById('backToMenuButton');
+        const backToMenuFromHighScores = document.getElementById('backToMenuFromHighScores');
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const restartButton = document.getElementById('restartButton');
+        const submitScoreButton = document.getElementById('submitScoreButton');
+        const scoreElement = document.getElementById('score');
+        const levelElement = document.getElementById('level');
+        const gameOverModal = document.getElementById('gameOverModal');
+        const finalScoreElement = document.getElementById('finalScore');
+        const playerNameInput = document.getElementById('playerName');
+        const highScoresTableBody = document.querySelector('#highScoresTable tbody');
+
+        // --- Game Constants and State ---
+        const gridSize = 20;
+        const canvasSize = 400;
+        canvas.width = canvasSize;
+        canvas.height = canvasSize;
+
+        let snake, food, score, level, direction, gameInterval, gameSpeed;
+
+        const spaceEmojis = ['🪐', '✨', '🛸', '🚀', '🌌', '🌠'];
+        const snakeHeadEmoji = '🐍';
+        const initialGameSpeed = 150;
+        const speedIncreasePerLevel = 10;
+        const HIGH_SCORES_KEY = 'galacticSnakeHighScores';
+
+        // --- Page Navigation ---
+        function showPage(pageId) {
+            document.querySelectorAll('.page').forEach(page => {
+                page.classList.remove('active');
+            });
+            document.getElementById(pageId).classList.add('active');
+        }
+        
+        function navigateTo(pageId) {
+            showPage(pageId);
+            // Stop the game if we navigate away from the game page
+            if (pageId !== 'game-page') {
+                clearInterval(gameInterval);
+            }
+            if (pageId === 'high-scores-page') {
+                displayHighScores();
+            }
+        }
+
+        // --- High Score Functions ---
+        function getHighScores() {
+            const highScores = JSON.parse(localStorage.getItem(HIGH_SCORES_KEY) || '[]');
+            return highScores.sort((a, b) => b.score - a.score).slice(0, 10);
+        }
+
+        function saveHighScores(scoreEntry) {
+            const highScores = getHighScores();
+            highScores.push(scoreEntry);
+            const sortedScores = highScores.sort((a, b) => b.score - a.score).slice(0, 10);
+            localStorage.setItem(HIGH_SCORES_KEY, JSON.stringify(sortedScores));
+        }
+
+        function displayHighScores() {
+            const highScores = getHighScores();
+            highScoresTableBody.innerHTML = '';
+
+            highScores.forEach((entry, index) => {
+                const row = highScoresTableBody.insertRow();
+                const rankCell = row.insertCell();
+                const nameCell = row.insertCell();
+                const scoreCell = row.insertCell();
+
+                rankCell.textContent = index + 1;
+                nameCell.textContent = entry.name;
+                scoreCell.textContent = entry.score;
+            });
+        }
+
+        // --- Game Functions ---
+        function initGame() {
+            snake = [{ x: 10, y: 10 }];
+            food = {};
+            score = 0;
+            level = 1;
+            gameSpeed = initialGameSpeed;
+            direction = { x: 1, y: 0 };
+            gameOverModal.style.display = 'none';
+            scoreElement.textContent = score;
+            levelElement.textContent = level;
+            playerNameInput.value = '';
+            generateFood();
+            if (gameInterval) clearInterval(gameInterval);
+            gameInterval = setInterval(gameLoop, gameSpeed);
+        }
+
+        function generateFood() {
+            let newFoodPosition;
+            do {
+                newFoodPosition = {
+                    x: Math.floor(Math.random() * (canvasSize / gridSize)),
+                    y: Math.floor(Math.random() * (canvasSize / gridSize)),
+                    emoji: spaceEmojis[Math.floor(Math.random() * spaceEmojis.length)]
+                };
+            } while (isSnakeCollision(newFoodPosition));
+            food = newFoodPosition;
+        }
+
+        function isSnakeCollision(position) {
+            return snake.some(segment => segment.x === position.x && segment.y === position.y);
+        }
+
+        function gameLoop() {
+            const head = { x: snake[0].x + direction.x, y: snake[0].y + direction.y };
+
+            if (
+                head.x < 0 || head.x >= canvasSize / gridSize ||
+                head.y < 0 || head.y >= canvasSize / gridSize ||
+                isSnakeCollision(head)
+            ) {
+                endGame();
+                return;
+            }
+
+            snake.unshift(head);
+
+            if (head.x === food.x && head.y === food.y) {
+                score++;
+                scoreElement.textContent = score;
+                if (score % 5 === 0) {
+                    level++;
+                    levelElement.textContent = level;
+                    gameSpeed -= speedIncreasePerLevel;
+                    if (gameSpeed < 50) gameSpeed = 50;
+                    clearInterval(gameInterval);
+                    gameInterval = setInterval(gameLoop, gameSpeed);
+                }
+                generateFood();
+            } else {
+                snake.pop();
+            }
+
+            draw();
+        }
+
+        function draw() {
+            ctx.clearRect(0, 0, canvasSize, canvasSize);
+
+            // Draw snake
+            snake.forEach((segment, index) => {
+                if (index === 0) {
+                    ctx.font = `${gridSize}px sans-serif`;
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'middle';
+                    ctx.shadowColor = 'var(--primary-color)';
+                    ctx.shadowBlur = 10;
+                    ctx.fillText(snakeHeadEmoji, segment.x * gridSize + gridSize / 2, segment.y * gridSize + gridSize / 2);
+                    ctx.shadowBlur = 0;
+                } else {
+                    ctx.fillStyle = 'var(--primary-color)';
+                    ctx.fillRect(segment.x * gridSize, segment.y * gridSize, gridSize, gridSize);
+                }
+            });
+
+            // Draw food as an emoji
+            ctx.font = `${gridSize}px sans-serif`;
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.shadowColor = 'var(--accent-color)';
+            ctx.shadowBlur = 10;
+            ctx.fillText(food.emoji, food.x * gridSize + gridSize / 2, food.y * gridSize + gridSize / 2);
+            ctx.shadowBlur = 0;
+        }
+
+        function endGame() {
+            clearInterval(gameInterval);
+            finalScoreElement.textContent = `Your final score is: ${score}`;
+            gameOverModal.style.display = 'flex';
+        }
+
+        function handleSubmitScore() {
+            const playerName = playerNameInput.value.trim();
+            if (playerName) {
+                saveHighScores({ name: playerName, score: score });
+            }
+            gameOverModal.style.display = 'none';
+            navigateTo('main-menu');
+        }
+
+        function handleKeyPress(e) {
+            const key = e.key;
+            const currentDir = direction;
+
+            switch (key) {
+                case 'ArrowUp':
+                case 'w':
+                    if (currentDir.y === 0) direction = { x: 0, y: -1 };
+                    break;
+                case 'ArrowDown':
+                case 's':
+                    if (currentDir.y === 0) direction = { x: 0, y: 1 };
+                    break;
+                case 'ArrowLeft':
+                case 'a':
+                    if (currentDir.x === 0) direction = { x: -1, y: 0 };
+                    break;
+                case 'ArrowRight':
+                case 'd':
+                    if (currentDir.x === 0) direction = { x: 1, y: 0 };
+                    break;
+            }
+        }
+        
+        // --- Event Listeners ---
+        document.addEventListener('keydown', handleKeyPress);
+        playGameButton.addEventListener('click', () => {
+            initGame();
+            navigateTo('game-page');
+        });
+        viewHighScoresButton.addEventListener('click', () => {
+            navigateTo('high-scores-page');
+        });
+        backToMenuButton.addEventListener('click', () => {
+            navigateTo('main-menu');
+        });
+        backToMenuFromHighScores.addEventListener('click', () => {
+            navigateTo('main-menu');
+        });
+        restartButton.addEventListener('click', initGame);
+        submitScoreButton.addEventListener('click', handleSubmitScore);
+
+        // Initial setup
+        document.addEventListener('DOMContentLoaded', () => {
+            navigateTo('main-menu');
+        });
+    </script>
+</body>
+</html>
