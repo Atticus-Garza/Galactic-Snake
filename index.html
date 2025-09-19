@@ -274,9 +274,29 @@
                 </div>
                 <p id="buyStarsStatus" style="margin-top:10px;color:var(--accent-color);"></p>
             </div>
+
+            <!-- Buy Stars Confirmation Modal -->
+            <div id="confirmStarsModal" class="modal">
+                <div class="modal-content" style="box-shadow: 0 0 20px gold;">
+                    <h2 style="color:gold;">Confirm Your Purchase</h2>
+                    <p id="confirmStarsText"></p>
+                    <div id="cashappInstructions" style="display:none;color:#FFD700;margin-bottom:10px;">
+                        <strong>CashApp:</strong> Please complete your payment in CashApp and get your web receipt. Enter the code below to confirm your order.
+                    </div>
+                    <div style="margin:10px 0;">
+                        <label for="orderCodeInput">Enter Order Code:</label>
+                        <input type="text" id="orderCodeInput" maxlength="8" style="margin-left:8px;">
+                    </div>
+                    <button id="confirmOrderButton">Confirm Order</button>
+                    <button id="cancelOrderButton">Cancel</button>
+                    <p id="orderCodeStatus" style="margin-top:10px;color:var(--accent-color);"></p>
+                </div>
+            </div>
+            </div>
                 <p id="skinStatus" style="margin-top:10px;color:var(--accent-color);"></p>
             </div>
             <div class="button-group">
+                <button id="backToGameFromStore">Back to Game</button>
                 <button id="backToMenuFromStore">Back to Menu</button>
             </div>
         </div>
@@ -383,6 +403,7 @@
     const openStoreButton = document.getElementById('openStoreButton');
     const storePage = document.getElementById('store-page');
     const backToMenuFromStore = document.getElementById('backToMenuFromStore');
+    const backToGameFromStore = document.getElementById('backToGameFromStore');
     const processingModal = document.getElementById('processingModal');
     const skinsContainer = document.getElementById('skinsContainer');
     const skinStatus = document.getElementById('skinStatus');
@@ -435,6 +456,13 @@
             '🧑‍🚀': false // Astronaut
         };
     const buyStarsStatus = document.getElementById('buyStarsStatus');
+    const confirmStarsModal = document.getElementById('confirmStarsModal');
+    const confirmStarsText = document.getElementById('confirmStarsText');
+    const orderCodeInput = document.getElementById('orderCodeInput');
+    const confirmOrderButton = document.getElementById('confirmOrderButton');
+    const cancelOrderButton = document.getElementById('cancelOrderButton');
+    const orderCodeStatus = document.getElementById('orderCodeStatus');
+    const cashappInstructions = document.getElementById('cashappInstructions');
         const skinTailColors = {
             '🐍': '#4CAF50',
             '🦎': '#8BC34A',
@@ -550,13 +578,24 @@
             if (head.x === food.x && head.y === food.y) {
                 score++;
                 scoreElement.textContent = score;
+                // Award 1 Star for eating food
+                stars++;
+                updateCurrencyDisplay();
                 if (score % 5 === 0) {
                     level++;
                     levelElement.textContent = level;
+                    // Award 5 Stars for leveling up
+                    stars += 5;
+                    updateCurrencyDisplay();
                     gameSpeed -= speedIncreasePerLevel;
                     if (gameSpeed < 50) gameSpeed = 50;
                     clearInterval(gameInterval);
                     gameInterval = setInterval(gameLoop, gameSpeed);
+                }
+                // Bonus: Award 10 Stars for every 25 points
+                if (score > 0 && score % 25 === 0) {
+                    stars += 10;
+                    updateCurrencyDisplay();
                 }
                 generateFood();
             } else {
@@ -605,16 +644,47 @@
         });
     }
     // --- Buy Stars Logic ---
-    function buyStars(amount, method, price) {
-        showProcessing();
-        setTimeout(() => {
-            hideProcessing();
-            stars += amount;
-            updateCurrencyDisplay();
-            buyStarsStatus.textContent = `Purchased ${amount} Stars for $${price} via ${method === 'cashapp' ? 'CashApp' : 'PayPal'}!`;
-            window.open(method === 'cashapp' ? 'https://cash.app/' : 'https://www.paypal.com/', '_blank');
-        }, 1200);
+    // --- Buy Stars Confirmation Logic ---
+    let pendingOrder = null;
+    function generateOrderCode() {
+        return Math.random().toString(36).substring(2, 10).toUpperCase();
     }
+    function showConfirmStarsModal(amount, method, price) {
+        pendingOrder = {
+            amount,
+            method,
+            price,
+            code: generateOrderCode()
+        };
+        confirmStarsText.textContent = `Order: ${amount} Stars for $${price} via ${method === 'cashapp' ? 'CashApp' : 'PayPal'}\nYour order code: ${pendingOrder.code}`;
+        orderCodeInput.value = '';
+        orderCodeStatus.textContent = '';
+        cashappInstructions.style.display = method === 'cashapp' ? 'block' : 'none';
+        confirmStarsModal.style.display = 'flex';
+        // Open payment link
+        setTimeout(() => {
+            window.open(method === 'cashapp' ? 'https://cash.app/' : 'https://www.paypal.com/', '_blank');
+        }, 500);
+    }
+    function hideConfirmStarsModal() {
+        confirmStarsModal.style.display = 'none';
+        pendingOrder = null;
+    }
+    confirmOrderButton.addEventListener('click', () => {
+        if (!pendingOrder) return;
+        if (orderCodeInput.value.trim().toUpperCase() === pendingOrder.code) {
+            stars += pendingOrder.amount;
+            updateCurrencyDisplay();
+            buyStarsStatus.textContent = `Order confirmed! ${pendingOrder.amount} Stars added.`;
+            hideConfirmStarsModal();
+        } else {
+            orderCodeStatus.textContent = 'Incorrect code. Please enter the code shown above.';
+        }
+    });
+    cancelOrderButton.addEventListener('click', () => {
+        hideConfirmStarsModal();
+        buyStarsStatus.textContent = 'Order cancelled.';
+    });
 
     function updateCurrencyDisplay() {
         if (currencyDisplay) currencyDisplay.textContent = `Stars: ${stars}`;
@@ -666,7 +736,7 @@
             const amount = parseInt(btn.getAttribute('data-amount'));
             const price = btn.getAttribute('data-price');
             const method = btn.getAttribute('data-method');
-            buyStars(amount, method, price);
+            showConfirmStarsModal(amount, method, price);
         });
     });
 
@@ -731,6 +801,9 @@
         });
         backToMenuFromStore.addEventListener('click', () => {
             navigateTo('main-menu');
+        });
+        backToGameFromStore.addEventListener('click', () => {
+            navigateTo('game-page');
         });
 
         // Payment flow (mock)
