@@ -203,12 +203,57 @@
 </head>
 <body>
 
+
     <div id="main-menu" class="page active">
         <div class="page-container">
             <h1>Galactic Snake</h1>
             <div class="button-group">
                 <button id="playGameButton">Play Game</button>
                 <button id="viewHighScoresButton">High Scores</button>
+                <button id="openStoreButton">Subscription Store</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Subscription Store Page -->
+    <div id="store-page" class="page">
+        <div class="page-container">
+            <h1>Subscription Store</h1>
+            <div class="subscription-options">
+                <div class="subscription-card">
+                    <h2>Premium</h2>
+                    <p>Unlock all premium features!</p>
+                    <p><strong>$4.99/month</strong></p>
+                    <button class="pay-cashapp" data-plan="premium">Pay with CashApp</button>
+                    <button class="pay-paypal" data-plan="premium">Pay with PayPal</button>
+                </div>
+                <div class="subscription-card">
+                    <h2>Ultimate</h2>
+                    <p>All premium + exclusive skins!</p>
+                    <p><strong>$9.99/month</strong></p>
+                    <button class="pay-cashapp" data-plan="ultimate">Pay with CashApp</button>
+                    <button class="pay-paypal" data-plan="ultimate">Pay with PayPal</button>
+                </div>
+            </div>
+            <div class="button-group">
+                <button id="backToMenuFromStore">Back to Menu</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Processing Modal -->
+    <div id="processingModal" class="modal">
+        <div class="modal-content" style="box-shadow: 0 0 20px var(--accent-color);">
+            <div style="display: flex; flex-direction: column; align-items: center;">
+                <div class="spinner" style="margin-bottom: 20px;">
+                    <svg width="48" height="48" viewBox="0 0 48 48" fill="none">
+                        <circle cx="24" cy="24" r="20" stroke="#3B82F6" stroke-width="6" opacity="0.2"/>
+                        <path d="M44 24c0-11.046-8.954-20-20-20" stroke="#3B82F6" stroke-width="6" stroke-linecap="round">
+                            <animateTransform attributeName="transform" type="rotate" from="0 24 24" to="360 24 24" dur="1s" repeatCount="indefinite"/>
+                        </path>
+                    </svg>
+                </div>
+                <h2 style="color: var(--accent-color);">Processing...</h2>
             </div>
         </div>
     </div>
@@ -267,8 +312,44 @@
         </div>
     </div>
 
+    <style>
+        .subscription-options {
+            display: flex;
+            gap: 20px;
+            justify-content: center;
+            margin: 30px 0;
+        }
+        .subscription-card {
+            background: #232946;
+            border: 2px solid var(--accent-color);
+            border-radius: 12px;
+            padding: 20px;
+            width: 220px;
+            box-shadow: 0 0 10px var(--accent-color);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        .subscription-card h2 {
+            color: var(--primary-color);
+        }
+        .subscription-card button {
+            margin: 8px 0;
+        }
+    </style>
     <script>
-        // --- DOM Elements ---
+    // --- DOM Elements ---
+    const openStoreButton = document.getElementById('openStoreButton');
+    const storePage = document.getElementById('store-page');
+    const backToMenuFromStore = document.getElementById('backToMenuFromStore');
+    const processingModal = document.getElementById('processingModal');
+        // --- Processing Modal Functions ---
+        function showProcessing() {
+            processingModal.style.display = 'flex';
+        }
+        function hideProcessing() {
+            processingModal.style.display = 'none';
+        }
         const mainMenu = document.getElementById('main-menu');
         const gamePage = document.getElementById('game-page');
         const highScoresPage = document.getElementById('high-scores-page');
@@ -301,7 +382,7 @@
         const speedIncreasePerLevel = 10;
         const HIGH_SCORES_KEY = 'galacticSnakeHighScores';
 
-        // --- Page Navigation ---
+    // --- Page Navigation ---
         function showPage(pageId) {
             document.querySelectorAll('.page').forEach(page => {
                 page.classList.remove('active');
@@ -500,6 +581,36 @@
         });
         restartButton.addEventListener('click', initGame);
         submitScoreButton.addEventListener('click', handleSubmitScore);
+        openStoreButton.addEventListener('click', () => {
+            navigateTo('store-page');
+        });
+        backToMenuFromStore.addEventListener('click', () => {
+            navigateTo('main-menu');
+        });
+
+        // Payment flow (mock)
+        document.querySelectorAll('.pay-cashapp').forEach(btn => {
+            btn.addEventListener('click', function() {
+                const plan = btn.getAttribute('data-plan');
+                showProcessing();
+                setTimeout(() => {
+                    hideProcessing();
+                    window.open('https://cash.app/', '_blank');
+                    alert(`Proceed to pay for ${plan} via CashApp.`);
+                }, 1200);
+            });
+        });
+        document.querySelectorAll('.pay-paypal').forEach(btn => {
+            btn.addEventListener('click', function() {
+                const plan = btn.getAttribute('data-plan');
+                showProcessing();
+                setTimeout(() => {
+                    hideProcessing();
+                    window.open('https://www.paypal.com/', '_blank');
+                    alert(`Proceed to pay for ${plan} via PayPal.`);
+                }, 1200);
+            });
+        });
 
         // Initial setup
         document.addEventListener('DOMContentLoaded', () => {
