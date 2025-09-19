@@ -235,6 +235,23 @@
                     <button class="pay-paypal" data-plan="ultimate">Pay with PayPal</button>
                 </div>
             </div>
+            <div class="skins-section" style="margin-top:40px;">
+                <h2>Choose Your Snake Skin</h2>
+                <div style="margin-bottom:10px;font-size:1.1em;color:gold;">
+                    <span id="currencyDisplay">Stars: 0</span>
+                </div>
+                <div id="skinsContainer" style="display:flex;gap:15px;justify-content:center;flex-wrap:wrap;">
+                    <button class="skin-btn" data-skin="🐍">Classic (Free)</button>
+                    <button class="skin-btn" data-skin="🦎">Lizard (Free)</button>
+                    <button class="skin-btn" data-skin="🦔" data-price="10">Hedgehog (10⭐)</button>
+                    <button class="skin-btn" data-skin="🦚" data-price="15">Peacock (15⭐)</button>
+                    <button class="skin-btn" data-skin="🐉" data-price="20">Dragon (20⭐)</button>
+                    <button class="skin-btn" data-skin="🦕" data-price="25">Dino (25⭐)</button>
+                    <button class="skin-btn" data-skin="🦖" data-price="30">T-Rex (30⭐)</button>
+                    <button class="skin-btn" data-skin="🧑‍🚀" data-price="40">Astronaut (40⭐)</button>
+                </div>
+                <p id="skinStatus" style="margin-top:10px;color:var(--accent-color);"></p>
+            </div>
             <div class="button-group">
                 <button id="backToMenuFromStore">Back to Menu</button>
             </div>
@@ -343,6 +360,9 @@
     const storePage = document.getElementById('store-page');
     const backToMenuFromStore = document.getElementById('backToMenuFromStore');
     const processingModal = document.getElementById('processingModal');
+    const skinsContainer = document.getElementById('skinsContainer');
+    const skinStatus = document.getElementById('skinStatus');
+    const currencyDisplay = document.getElementById('currencyDisplay');
         // --- Processing Modal Functions ---
         function showProcessing() {
             processingModal.style.display = 'flex';
@@ -377,7 +397,32 @@
         let snake, food, score, level, direction, gameInterval, gameSpeed;
 
         const spaceEmojis = ['🪐', '✨', '🛸', '🚀', '🌌', '🌠'];
-        const snakeHeadEmoji = '🐍';
+        // --- Skins ---
+        const SKIN_KEY = 'galacticSnakeSkin';
+        // --- Skins and Currency ---
+        const skinAccess = {
+            '🐍': true, // Classic
+            '🦎': true, // Free
+            '🦔': false, // Hedgehog
+            '🦚': false, // Peacock
+            '🐉': false, // Dragon
+            '🦕': false, // Dino
+            '🦖': false, // T-Rex
+            '🧑‍🚀': false // Astronaut
+        };
+        const skinTailColors = {
+            '🐍': '#4CAF50',
+            '🦎': '#8BC34A',
+            '🦔': '#795548',
+            '🦚': '#2196F3',
+            '🐉': '#E91E63',
+            '🦕': '#FFEB3B',
+            '🦖': '#FF9800',
+            '🧑‍🚀': '#B0BEC5'
+        };
+        const CURRENCY_KEY = 'galacticSnakeStars';
+        let stars = parseInt(localStorage.getItem(CURRENCY_KEY) || '50'); // Start with 50 for demo
+        let snakeHeadEmoji = localStorage.getItem(SKIN_KEY) || '🐍';
         const initialGameSpeed = 150;
         const speedIncreasePerLevel = 10;
         const HIGH_SCORES_KEY = 'galacticSnakeHighScores';
@@ -510,7 +555,7 @@
                     ctx.fillText(snakeHeadEmoji, segment.x * gridSize + gridSize / 2, segment.y * gridSize + gridSize / 2);
                     ctx.shadowBlur = 0;
                 } else {
-                    ctx.fillStyle = 'var(--primary-color)';
+                    ctx.fillStyle = skinTailColors[snakeHeadEmoji] || 'var(--primary-color)';
                     ctx.fillRect(segment.x * gridSize, segment.y * gridSize, gridSize, gridSize);
                 }
             });
@@ -524,6 +569,62 @@
             ctx.fillText(food.emoji, food.x * gridSize + gridSize / 2, food.y * gridSize + gridSize / 2);
             ctx.shadowBlur = 0;
         }
+    // --- Skins Selection Logic ---
+    function updateSkinAccess() {
+        // Free skins always accessible
+        skinAccess['🐍'] = true;
+        skinAccess['🦎'] = true;
+        // Paid skins: check localStorage for purchases
+        Object.keys(skinAccess).forEach(skin => {
+            if (localStorage.getItem('skinPurchased_' + skin) === 'true') {
+                skinAccess[skin] = true;
+            }
+        });
+    }
+
+    function updateCurrencyDisplay() {
+        if (currencyDisplay) currencyDisplay.textContent = `Stars: ${stars}`;
+        localStorage.setItem(CURRENCY_KEY, stars);
+    }
+
+    function selectSkin(skin) {
+        updateSkinAccess();
+        if (skinAccess[skin]) {
+            snakeHeadEmoji = skin;
+            localStorage.setItem(SKIN_KEY, skin);
+            skinStatus.textContent = `Skin changed to ${skin}!`;
+        } else {
+            // Try to buy if price exists
+            const btn = skinsContainer.querySelector(`[data-skin='${skin}']`);
+            const price = parseInt(btn.getAttribute('data-price') || '0');
+            if (price > 0) {
+                if (stars >= price) {
+                    stars -= price;
+                    skinAccess[skin] = true;
+                    localStorage.setItem('skinPurchased_' + skin, 'true');
+                    updateCurrencyDisplay();
+                    snakeHeadEmoji = skin;
+                    localStorage.setItem(SKIN_KEY, skin);
+                    skinStatus.textContent = `Purchased and equipped ${skin}!`;
+                } else {
+                    skinStatus.textContent = `Not enough Stars to buy this skin!`;
+                }
+            } else {
+                skinStatus.textContent = `This skin is locked!`;
+            }
+        }
+    }
+
+    if (skinsContainer) {
+        updateSkinAccess();
+        updateCurrencyDisplay();
+        skinsContainer.querySelectorAll('.skin-btn').forEach(btn => {
+            btn.addEventListener('click', function() {
+                const skin = btn.getAttribute('data-skin');
+                selectSkin(skin);
+            });
+        });
+    }
 
         function endGame() {
             clearInterval(gameInterval);
@@ -595,7 +696,7 @@
                 showProcessing();
                 setTimeout(() => {
                     hideProcessing();
-                    window.open('https://cash.app/$TVEGESD', '_blank');
+                    window.open('https://cash.app/', '_blank');
                     alert(`Proceed to pay for ${plan} via CashApp.`);
                 }, 1200);
             });
