@@ -296,7 +296,6 @@
                 <p id="skinStatus" style="margin-top:10px;color:var(--accent-color);"></p>
             </div>
             <div class="button-group">
-                <button id="backToGameFromStore">Back to Game</button>
                 <button id="backToMenuFromStore">Back to Menu</button>
             </div>
         </div>
@@ -723,9 +722,28 @@
         updateSkinAccess();
         updateCurrencyDisplay();
         skinsContainer.querySelectorAll('.skin-btn').forEach(btn => {
+            const skin = btn.getAttribute('data-skin');
+            // Show owned/unowned status
+            if (skinAccess[skin]) {
+                btn.textContent += ' (Owned)';
+                btn.disabled = false;
+                btn.style.opacity = '1';
+            } else {
+                btn.disabled = false;
+                btn.style.opacity = '1';
+            }
             btn.addEventListener('click', function() {
-                const skin = btn.getAttribute('data-skin');
                 selectSkin(skin);
+                // Update button labels after purchase
+                updateSkinAccess();
+                skinsContainer.querySelectorAll('.skin-btn').forEach(b => {
+                    const s = b.getAttribute('data-skin');
+                    if (skinAccess[s]) {
+                        b.textContent = b.textContent.replace(/ ?\(Owned\)?$/, '') + ' (Owned)';
+                    } else {
+                        b.textContent = b.textContent.replace(/ ?\(Owned\)?$/, '');
+                    }
+                });
             });
         });
     }
