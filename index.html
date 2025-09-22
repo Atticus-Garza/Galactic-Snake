@@ -224,15 +224,15 @@
                     <h2>Premium</h2>
                     <p>Unlock all premium features!</p>
                     <p><strong>$4.99/month</strong></p>
-                    <button class="pay-cashapp" data-plan="premium">Pay with CashApp</button>
-                    <button class="pay-paypal" data-plan="premium">Pay with PayPal</button>
+                    <button id="premiumCashApp" class="pay-cashapp" data-plan="premium">Pay with CashApp</button>
+                    <button id="premiumPayPal" class="pay-paypal" data-plan="premium">Pay with PayPal</button>
                 </div>
                 <div class="subscription-card">
                     <h2>Ultimate</h2>
                     <p>All premium + exclusive skins!</p>
                     <p><strong>$9.99/month</strong></p>
-                    <button class="pay-cashapp" data-plan="ultimate">Pay with CashApp</button>
-                    <button class="pay-paypal" data-plan="ultimate">Pay with PayPal</button>
+                    <button id="ultimateCashApp" class="pay-cashapp" data-plan="ultimate">Pay with CashApp</button>
+                    <button id="ultimatePayPal" class="pay-paypal" data-plan="ultimate">Pay with PayPal</button>
                 </div>
             </div>
             <div class="skins-section" style="margin-top:40px;">
@@ -396,6 +396,30 @@
         .subscription-card button {
             margin: 8px 0;
         }
+        
+        /* Subscription Activation Animation */
+        @keyframes activationGlow {
+            0% { box-shadow: 0 0 10px gold; }
+            50% { box-shadow: 0 0 30px gold, 0 0 50px gold; }
+            100% { box-shadow: 0 0 10px gold; }
+        }
+        
+        .particle {
+            position: absolute;
+            pointer-events: none;
+            animation: particleFade 1s ease-out forwards;
+        }
+
+        @keyframes particleFade {
+            0% {
+                transform: translate(0, 0) scale(1);
+                opacity: 1;
+            }
+            100% {
+                transform: translate(var(--tx), var(--ty)) scale(0);
+                opacity: 0;
+            }
+        }
     </style>
     <script>
     // --- DOM Elements ---
@@ -455,13 +479,15 @@
             '🧑‍🚀': false // Astronaut
         };
     const buyStarsStatus = document.getElementById('buyStarsStatus');
-    const confirmStarsModal = document.getElementById('confirmStarsModal');
-    const confirmStarsText = document.getElementById('confirmStarsText');
+    const confirmOrderModal = document.getElementById('confirmOrderModal');
+    const confirmOrderText = document.getElementById('confirmOrderText');
     const orderCodeInput = document.getElementById('orderCodeInput');
     const confirmOrderButton = document.getElementById('confirmOrderButton');
     const cancelOrderButton = document.getElementById('cancelOrderButton');
     const orderCodeStatus = document.getElementById('orderCodeStatus');
     const cashappInstructions = document.getElementById('cashappInstructions');
+    const SUBSCRIPTION_STATUS_KEY = 'galacticSnakeSubscription';
+    let subscriptionStatus = localStorage.getItem(SUBSCRIPTION_STATUS_KEY) || 'none'; // 'none', 'premium', or 'ultimate'
         const skinTailColors = {
             '🐍': '#4CAF50',
             '🦎': '#8BC34A',
@@ -653,6 +679,69 @@
         stars2: atob('U1RBUlMxNTA='),  // 150 stars
         stars3: atob('U1RBUlM1MDA=')   // 500 stars
     };
+
+    // Particle animation function
+    function createParticleExplosion(x, y, color, count = 30) {
+        for (let i = 0; i < count; i++) {
+            const particle = document.createElement('div');
+            particle.className = 'particle';
+            particle.style.left = x + 'px';
+            particle.style.top = y + 'px';
+            particle.style.backgroundColor = color;
+            particle.style.width = '8px';
+            particle.style.height = '8px';
+            particle.style.borderRadius = '50%';
+            
+            // Random direction and distance
+            const angle = (Math.random() * Math.PI * 2);
+            const distance = 100 + Math.random() * 100;
+            particle.style.setProperty('--tx', `${Math.cos(angle) * distance}px`);
+            particle.style.setProperty('--ty', `${Math.sin(angle) * distance}px`);
+            
+            document.body.appendChild(particle);
+            
+            // Remove particle after animation
+            setTimeout(() => particle.remove(), 1000);
+        }
+    }
+
+    // Update subscription UI based on status
+    function updateSubscriptionUI(animate = false) {
+        document.querySelectorAll('.subscription-card').forEach(card => {
+            const plan = card.querySelector('h2').textContent.toLowerCase();
+            if (plan === subscriptionStatus || 
+                (subscriptionStatus === 'ultimate' && plan === 'premium')) {
+                if (animate) {
+                    // Get card position for particle effect
+                    const rect = card.getBoundingClientRect();
+                    const centerX = rect.left + rect.width / 2;
+                    const centerY = rect.top + rect.height / 2;
+                    
+                    // Create particle explosion
+                    const color = plan === 'ultimate' ? '#9c27b0' : '#4CAF50';
+                    createParticleExplosion(centerX, centerY, color);
+                    
+                    // Add glow animation
+                    card.style.animation = 'activationGlow 1.5s ease-in-out';
+                }
+                
+                card.style.border = '2px solid gold';
+                card.querySelector('h2').style.color = 'gold';
+                card.querySelectorAll('button').forEach(btn => {
+                    btn.disabled = true;
+                    btn.textContent = 'Active';
+                    btn.style.backgroundColor = '#4CAF50';
+                });
+            }
+        });
+    }
+
+    // Call this when subscription changes
+    function updateSubscriptionStatus(newStatus) {
+        subscriptionStatus = newStatus;
+        localStorage.setItem(SUBSCRIPTION_STATUS_KEY, newStatus);
+        updateSubscriptionUI(true); // Pass true to trigger animation
+    }
     function showConfirmOrderModal(type, amount, method, price) {
         let code = '';
         let text = '';
@@ -706,6 +795,7 @@
         } else if (pendingOrder.type === 'premium' || pendingOrder.type === 'ultimate') {
             validCode = entered === pendingOrder.code;
             if (validCode) {
+                updateSubscriptionStatus(pendingOrder.type);
                 buyStarsStatus.textContent = `Order confirmed! ${pendingOrder.type.charAt(0).toUpperCase() + pendingOrder.type.slice(1)} subscription activated.`;
                 hideConfirmOrderModal();
             } else {
@@ -850,6 +940,7 @@
         submitScoreButton.addEventListener('click', handleSubmitScore);
         openStoreButton.addEventListener('click', () => {
             navigateTo('store-page');
+            updateSubscriptionUI();  // Update subscription buttons when store page opens
         });
         backToMenuFromStore.addEventListener('click', () => {
             navigateTo('main-menu');
