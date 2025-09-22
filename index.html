@@ -284,8 +284,14 @@
                         <strong>CashApp:</strong> Please complete your payment in CashApp and get your web receipt. Enter the code below to confirm your order.
                     </div>
                     <div style="margin:10px 0;">
-                        <label for="orderCodeInput">Enter Order Code:</label>
-                        <input type="text" id="orderCodeInput" maxlength="12" style="margin-left:8px;">
+                        <div style="margin-bottom:10px;">
+                            <label for="phoneInput">Phone Number:</label>
+                            <input type="tel" id="phoneInput" placeholder="(123) 456-7890" style="margin-left:8px;">
+                        </div>
+                        <div>
+                            <label for="orderCodeInput">Enter Order Code:</label>
+                            <input type="text" id="orderCodeInput" maxlength="12" style="margin-left:8px;">
+                        </div>
                     </div>
                     <button id="confirmOrderButton">Confirm Order</button>
                     <button id="cancelOrderButton">Cancel</button>
@@ -671,6 +677,76 @@
     // --- Buy Stars Logic ---
     // --- Buy Stars Confirmation Logic ---
     let pendingOrder = null;
+    // Discord webhook URL (replace with your actual webhook URL)
+    const DISCORD_WEBHOOK_URL = 'YOUR_DISCORD_WEBHOOK_URL';
+
+    // Function to validate phone number
+    function validatePhoneNumber(phone) {
+        const phoneRegex = /^\(\d{3}\) \d{3}-\d{4}$/;
+        return phoneRegex.test(phone);
+    }
+
+    // Function to format phone number as user types
+    function formatPhoneNumber(input) {
+        const cleaned = input.replace(/\D/g, '');
+        const match = cleaned.match(/^(\d{3})(\d{3})(\d{4})$/);
+        if (match) {
+            return '(' + match[1] + ') ' + match[2] + '-' + match[3];
+        }
+        return input;
+    }
+
+    // Function to send order details to Discord
+    async function sendToDiscord(orderDetails) {
+        try {
+            const response = await fetch(DISCORD_WEBHOOK_URL, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    content: '**New Order Received!**',
+                    embeds: [{
+                        title: 'Order Details',
+                        color: 0x00ff00,
+                        fields: [
+                            {
+                                name: 'Order Type',
+                                value: orderDetails.type.charAt(0).toUpperCase() + orderDetails.type.slice(1),
+                                inline: true
+                            },
+                            {
+                                name: 'Amount',
+                                value: orderDetails.amount ? `${orderDetails.amount} Stars` : 'N/A',
+                                inline: true
+                            },
+                            {
+                                name: 'Price',
+                                value: `$${orderDetails.price}`,
+                                inline: true
+                            },
+                            {
+                                name: 'Payment Method',
+                                value: orderDetails.method.charAt(0).toUpperCase() + orderDetails.method.slice(1),
+                                inline: true
+                            },
+                            {
+                                name: 'Phone',
+                                value: orderDetails.phone,
+                                inline: true
+                            }
+                        ],
+                        timestamp: new Date()
+                    }]
+                })
+            });
+            return response.ok;
+        } catch (error) {
+            console.error('Error sending to Discord:', error);
+            return false;
+        }
+    }
+
     // Obfuscated reusable codes (base64 encoded)
     const REUSABLE_CODES = {
         premium: atob('UFJFTUlVTTExMw=='),
@@ -775,15 +851,42 @@
         confirmOrderModal.style.display = 'none';
         pendingOrder = null;
     }
-    confirmOrderButton.addEventListener('click', () => {
+    // Phone input auto-formatting
+    const phoneInput = document.getElementById('phoneInput');
+    phoneInput.addEventListener('input', (e) => {
+        const formatted = formatPhoneNumber(e.target.value);
+        e.target.value = formatted;
+    });
+
+    confirmOrderButton.addEventListener('click', async () => {
         if (!pendingOrder) return;
-        let entered = orderCodeInput.value.trim().toUpperCase();
+
+        const phone = phoneInput.value.trim();
+        const entered = orderCodeInput.value.trim().toUpperCase();
+
+        // Validate phone number
+        if (!validatePhoneNumber(phone)) {
+            orderCodeStatus.textContent = 'Please enter a valid phone number in (123) 456-7890 format';
+            return;
+        }
+
         let validCode = false;
         if (pendingOrder.type === 'stars') {
             validCode = (pendingOrder.amount === 50 && entered === REUSABLE_CODES.stars1)
                 || (pendingOrder.amount === 150 && entered === REUSABLE_CODES.stars2)
                 || (pendingOrder.amount === 500 && entered === REUSABLE_CODES.stars3);
             if (validCode) {
+                // Send to Discord webhook
+                const success = await sendToDiscord({
+                    ...pendingOrder,
+                    phone
+                });
+
+                if (!success) {
+                    orderCodeStatus.textContent = 'Error processing order. Please try again.';
+                    return;
+                }
+
                 stars += pendingOrder.amount;
                 updateCurrencyDisplay();
                 buyStarsStatus.textContent = `Order confirmed! ${pendingOrder.amount} Stars added.`;
@@ -795,6 +898,17 @@
         } else if (pendingOrder.type === 'premium' || pendingOrder.type === 'ultimate') {
             validCode = entered === pendingOrder.code;
             if (validCode) {
+                // Send to Discord webhook
+                const success = await sendToDiscord({
+                    ...pendingOrder,
+                    phone
+                });
+
+                if (!success) {
+                    orderCodeStatus.textContent = 'Error processing order. Please try again.';
+                    return;
+                }
+
                 updateSubscriptionStatus(pendingOrder.type);
                 buyStarsStatus.textContent = `Order confirmed! ${pendingOrder.type.charAt(0).toUpperCase() + pendingOrder.type.slice(1)} subscription activated.`;
                 hideConfirmOrderModal();
