@@ -2289,28 +2289,27 @@
             }, 2000);
         }
 
-        // Initialize game with proper loading sequence
+        // Initialize game immediately and load other assets in background
         function initializeGameAssets() {
             return new Promise((resolve) => {
-                const images = [
-                    'https://cash.app/favicon.ico',
-                    'https://www.paypal.com/favicon.ico'
-                ];
-                let loaded = 0;
+                // Start game immediately
+                resolve();
                 
-                function assetLoaded() {
-                    loaded++;
-                    if (loaded === images.length) {
-                        resolve();
-                    }
-                }
-                
-                images.forEach(src => {
-                    const img = new Image();
-                    img.onload = assetLoaded;
-                    img.onerror = assetLoaded; // Continue even if some assets fail
-                    img.src = src;
-                });
+                // Load payment assets in background only when needed
+                const loadPaymentAssets = () => {
+                    const images = [
+                        'https://cash.app/favicon.ico',
+                        'https://www.paypal.com/favicon.ico'
+                    ];
+                    
+                    images.forEach(src => {
+                        const img = new Image();
+                        img.src = src; // No need to wait for these
+                    });
+                };
+
+                // Load payment assets when user interacts with payment UI
+                document.querySelector('.shop-btn').addEventListener('click', loadPaymentAssets, { once: true });
             });
         }
 
