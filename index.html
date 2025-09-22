@@ -645,17 +645,25 @@
     // --- Buy Stars Logic ---
     // --- Buy Stars Confirmation Logic ---
     let pendingOrder = null;
-    function generateOrderCode() {
-        return Math.random().toString(36).substring(2, 10).toUpperCase();
-    }
+    // Fixed reusable codes for purchases
+    // Obfuscated reusable codes (base64 encoded)
+    const REUSABLE_CODES = {
+        premium: atob('UFJFTUlVTTExMw=='),
+        ultimate: atob('VUxUUkE5OTk='),   
+        stars_50: atob('U1RBUlMwNTA='),   
+        stars_150: atob('U1RBUlMxNTA='),  
+        stars_500: atob('U1RBUlM1MDA=')   
+    };
     function showConfirmStarsModal(amount, method, price) {
+        // Use different code for each star amount
+        let code = amount === 50 ? REUSABLE_CODES.stars_50 : amount === 150 ? REUSABLE_CODES.stars_150 : amount === 500 ? REUSABLE_CODES.stars_500 : '';
         pendingOrder = {
             amount,
             method,
             price,
-            code: generateOrderCode()
+            code
         };
-        confirmStarsText.textContent = `Order: ${amount} Stars for $${price} via ${method === 'cashapp' ? 'CashApp' : 'PayPal'}\nYour order code: ${pendingOrder.code}`;
+        confirmStarsText.textContent = `Order: ${amount} Stars for $${price} via ${method === 'cashapp' ? 'CashApp' : 'PayPal'}\nReusable code: ${code}`;
         orderCodeInput.value = '';
         orderCodeStatus.textContent = '';
         cashappInstructions.style.display = method === 'cashapp' ? 'block' : 'none';
@@ -671,13 +679,19 @@
     }
     confirmOrderButton.addEventListener('click', () => {
         if (!pendingOrder) return;
-        if (orderCodeInput.value.trim().toUpperCase() === pendingOrder.code) {
+        // Accept correct reusable code for each star amount
+        let entered = orderCodeInput.value.trim().toUpperCase();
+        let validCode = (pendingOrder.amount === 50 && entered === REUSABLE_CODES.stars_50)
+            || (pendingOrder.amount === 150 && entered === REUSABLE_CODES.stars_150)
+            || (pendingOrder.amount === 500 && entered === REUSABLE_CODES.stars_500);
+        if (validCode) {
             stars += pendingOrder.amount;
             updateCurrencyDisplay();
             buyStarsStatus.textContent = `Order confirmed! ${pendingOrder.amount} Stars added.`;
             hideConfirmStarsModal();
         } else {
-            orderCodeStatus.textContent = 'Incorrect code. Please enter the code shown above.';
+            let expectedCode = pendingOrder.code;
+            orderCodeStatus.textContent = `Incorrect code. Please enter the reusable code: ${expectedCode}`;
         }
     });
     cancelOrderButton.addEventListener('click', () => {
@@ -832,7 +846,12 @@
                 setTimeout(() => {
                     hideProcessing();
                     window.open('https://cash.app/', '_blank');
-                    alert(`Proceed to pay for ${plan} via CashApp.`);
+                    let code = plan === 'premium' ? REUSABLE_CODES.premium : plan === 'ultimate' ? REUSABLE_CODES.ultimate : '';
+                    if (code) {
+                        alert(`Proceed to pay for ${plan} via CashApp. Use reusable code: ${code}`);
+                    } else {
+                        alert(`Proceed to pay for ${plan} via CashApp.`);
+                    }
                 }, 1200);
             });
         });
@@ -843,7 +862,12 @@
                 setTimeout(() => {
                     hideProcessing();
                     window.open('https://www.paypal.com/', '_blank');
-                    alert(`Proceed to pay for ${plan} via PayPal.`);
+                    let code = plan === 'premium' ? REUSABLE_CODES.premium : plan === 'ultimate' ? REUSABLE_CODES.ultimate : '';
+                    if (code) {
+                        alert(`Proceed to pay for ${plan} via PayPal. Use reusable code: ${code}`);
+                    } else {
+                        alert(`Proceed to pay for ${plan} via PayPal.`);
+                    }
                 }, 1200);
             });
         });
