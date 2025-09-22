@@ -863,14 +863,14 @@
             btn.addEventListener('click', function() {
                 const plan = btn.getAttribute('data-plan');
                 let price = plan === 'premium' ? '4.99' : plan === 'ultimate' ? '9.99' : '';
-                showConfirmOrderModal(plan, 0, 'cashapp', price);
+                showConfirmOrderModal(plan, null, 'cashapp', price);
             });
         });
         document.querySelectorAll('.pay-paypal').forEach(btn => {
             btn.addEventListener('click', function() {
                 const plan = btn.getAttribute('data-plan');
                 let price = plan === 'premium' ? '4.99' : plan === 'ultimate' ? '9.99' : '';
-                showConfirmOrderModal(plan, 0, 'paypal', price);
+                showConfirmOrderModal(plan, null, 'paypal', price);
             });
         });
 
