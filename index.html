@@ -297,7 +297,7 @@
                     <h2 style="color:gold;">Confirm Your Purchase</h2>
                     <p id="confirmOrderText"></p>
                     <div id="cashappInstructions" style="display:none;color:#FFD700;margin-bottom:10px;">
-                        <strong>CashApp:</strong> Please complete your payment in CashApp and get your web receipt. Enter the code below to confirm your order.
+                        <strong>CashApp:</strong> Please complete your payment and enter your details below to confirm your order.
                     </div>
                     <div style="margin:10px 0;">
                         <div style="margin-bottom:10px;">
@@ -305,8 +305,8 @@
                             <input type="tel" id="phoneInput" placeholder="(123) 456-7890" style="margin-left:8px;">
                         </div>
                         <div>
-                            <label for="orderCodeInput">Enter Order Code:</label>
-                            <input type="text" id="orderCodeInput" maxlength="12" style="margin-left:8px;">
+                            <label for="orderCodeInput">Confirmation Code:</label>
+                            <input type="text" id="orderCodeInput" maxlength="12" style="margin-left:8px;" placeholder="Enter code from receipt">
                         </div>
                     </div>
                     <button id="confirmOrderButton">Confirm Order</button>
@@ -493,14 +493,28 @@
     </style>
     <script>
     // --- DOM Elements ---
+    // Store and navigation elements
     const openStoreButton = document.getElementById('openStoreButton');
     const storePage = document.getElementById('store-page');
     const backToMenuFromStore = document.getElementById('backToMenuFromStore');
     const backToGameFromStore = document.getElementById('backToGameFromStore');
     const processingModal = document.getElementById('processingModal');
+    
+    // Skins and currency elements
     const skinsContainer = document.getElementById('skinsContainer');
     const skinStatus = document.getElementById('skinStatus');
     const currencyDisplay = document.getElementById('currencyDisplay');
+    
+    // Payment and modal elements
+    const confirmOrderModal = document.getElementById('confirmOrderModal');
+    const confirmOrderText = document.getElementById('confirmOrderText');
+    const orderCodeInput = document.getElementById('orderCodeInput');
+    const phoneInput = document.getElementById('phoneInput');
+    const confirmOrderButton = document.getElementById('confirmOrderButton');
+    const cancelOrderButton = document.getElementById('cancelOrderButton');
+    const orderCodeStatus = document.getElementById('orderCodeStatus');
+    const cashappInstructions = document.getElementById('cashappInstructions');
+    const buyStarsStatus = document.getElementById('buyStarsStatus');
         // --- Processing Modal Functions ---
         function showProcessing() {
             processingModal.style.display = 'flex';
@@ -548,14 +562,6 @@
             '🦖': false, // T-Rex
             '🧑‍🚀': false // Astronaut
         };
-    const buyStarsStatus = document.getElementById('buyStarsStatus');
-    const confirmOrderModal = document.getElementById('confirmOrderModal');
-    const confirmOrderText = document.getElementById('confirmOrderText');
-    const orderCodeInput = document.getElementById('orderCodeInput');
-    const confirmOrderButton = document.getElementById('confirmOrderButton');
-    const cancelOrderButton = document.getElementById('cancelOrderButton');
-    const orderCodeStatus = document.getElementById('orderCodeStatus');
-    const cashappInstructions = document.getElementById('cashappInstructions');
     const SUBSCRIPTION_STATUS_KEY = 'galacticSnakeSubscription';
     let subscriptionStatus = localStorage.getItem(SUBSCRIPTION_STATUS_KEY) || 'none'; // 'none', 'premium', or 'ultimate'
         const skinTailColors = {
@@ -886,14 +892,14 @@
         let code = '';
         let text = '';
         if (type === 'stars') {
-        code = amount === 50 ? REUSABLE_CODES.stars1 : amount === 150 ? REUSABLE_CODES.stars2 : amount === 500 ? REUSABLE_CODES.stars3 : '';
-            text = `Order: ${amount} Stars for $${price} via ${method === 'cashapp' ? 'CashApp' : 'PayPal'}\nReusable code: ${code}`;
+            code = amount === 50 ? REUSABLE_CODES.stars1 : amount === 150 ? REUSABLE_CODES.stars2 : amount === 500 ? REUSABLE_CODES.stars3 : '';
+            text = `Order: ${amount} Stars for $${price} via ${method === 'cashapp' ? 'CashApp' : 'PayPal'}`;
         } else if (type === 'premium') {
             code = REUSABLE_CODES.premium;
-            text = `Order: Premium Subscription for $${price}/month via ${method === 'cashapp' ? 'CashApp' : 'PayPal'}\nReusable code: ${code}`;
+            text = `Order: Premium Subscription for $${price}/month via ${method === 'cashapp' ? 'CashApp' : 'PayPal'}`;
         } else if (type === 'ultimate') {
             code = REUSABLE_CODES.ultimate;
-            text = `Order: Ultimate Subscription for $${price}/month via ${method === 'cashapp' ? 'CashApp' : 'PayPal'}\nReusable code: ${code}`;
+            text = `Order: Ultimate Subscription for $${price}/month via ${method === 'cashapp' ? 'CashApp' : 'PayPal'}`;
         }
         pendingOrder = {
             type,
@@ -948,6 +954,7 @@
 
                 if (!success) {
                     orderCodeStatus.textContent = 'Error processing order. Please try again.';
+                    orderCodeStatus.style.color = '#ff4444';
                     return;
                 }
 
@@ -956,8 +963,8 @@
                 buyStarsStatus.textContent = `Order confirmed! ${pendingOrder.amount} Stars added.`;
                 hideConfirmOrderModal();
             } else {
-                let expectedCode = pendingOrder.code;
-                orderCodeStatus.textContent = `Incorrect code. Please enter the reusable code: ${expectedCode}`;
+                orderCodeStatus.textContent = 'Invalid confirmation code. Please check your receipt and try again.';
+                orderCodeStatus.style.color = '#ff4444';
             }
         } else if (pendingOrder.type === 'premium' || pendingOrder.type === 'ultimate') {
             validCode = entered === pendingOrder.code;
@@ -970,6 +977,7 @@
 
                 if (!success) {
                     orderCodeStatus.textContent = 'Error processing order. Please try again.';
+                    orderCodeStatus.style.color = '#ff4444';
                     return;
                 }
 
@@ -977,8 +985,8 @@
                 buyStarsStatus.textContent = `Order confirmed! ${pendingOrder.type.charAt(0).toUpperCase() + pendingOrder.type.slice(1)} subscription activated.`;
                 hideConfirmOrderModal();
             } else {
-                let expectedCode = pendingOrder.code;
-                orderCodeStatus.textContent = `Incorrect code. Please enter the reusable code: ${expectedCode}`;
+                orderCodeStatus.textContent = 'Invalid confirmation code. Please check your receipt and try again.';
+                orderCodeStatus.style.color = '#ff4444';
             }
         }
     });
@@ -1159,9 +1167,58 @@
             });
         });
 
+        // Initialize payment system
+        function initializePaymentSystem() {
+            // Set up button event listeners
+            document.querySelectorAll('.payment-btn').forEach(button => {
+                button.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    const plan = this.dataset.plan;
+                    const method = this.dataset.method;
+                    const price = this.dataset.price;
+                    
+                    console.log('Payment button clicked:', { plan, method, price }); // Debug log
+                    
+                    // Visual feedback
+                    this.style.transform = 'scale(0.95)';
+                    setTimeout(() => this.style.transform = '', 200);
+
+                    // Show processing
+                    showProcessing();
+                    
+                    // Show order modal after brief delay
+                    setTimeout(() => {
+                        hideProcessing();
+                        showConfirmOrderModal(plan, null, method, price);
+                    }, 800);
+                });
+
+                // Add hover effect
+                button.addEventListener('mouseenter', function() {
+                    this.style.boxShadow = `0 0 20px ${this.classList.contains('cashapp-btn') ? '#00D632' : '#0070BA'}`;
+                });
+                
+                button.addEventListener('mouseleave', function() {
+                    this.style.boxShadow = '';
+                });
+            });
+            
+            // Set up confirmation modal
+            if (phoneInput) {
+                phoneInput.addEventListener('input', (e) => {
+                    const formatted = formatPhoneNumber(e.target.value);
+                    e.target.value = formatted;
+                });
+            }
+
+            // Update UI based on current subscription
+            updateSubscriptionUI();
+        }
+
         // Initial setup
         document.addEventListener('DOMContentLoaded', () => {
             navigateTo('main-menu');
+            initializePaymentSystem();
         });
     </script>
 </body>
