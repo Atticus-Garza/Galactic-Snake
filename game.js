@@ -240,8 +240,12 @@ function updateScoreDisplay() {
 function endGame() {
     gameState.isGameOver = true;
     cancelAnimationFrame(gameState.frameId);
-    document.getElementById('game').classList.remove('active');
-    document.getElementById('main-menu').classList.add('active');
+    
+    // Update final score in game over modal
+    document.getElementById('finalScore').textContent = `Final Score: ${gameState.score}`;
+    
+    // Show game over modal
+    document.getElementById('gameOverModal').style.display = 'flex';
 }
 
 function handleDirectionInput(direction) {
@@ -357,3 +361,24 @@ document.getElementById('play-btn').addEventListener('click', function() {
 
 // Initialize touch controls
 initializeTouchControls();
+
+// Game over modal buttons
+document.getElementById('restart-btn').addEventListener('click', function() {
+    document.getElementById('gameOverModal').style.display = 'none';
+    document.getElementById('game').classList.add('active');
+    initializeGame();
+});
+
+document.getElementById('menu-btn').addEventListener('click', function() {
+    document.getElementById('gameOverModal').style.display = 'none';
+    document.getElementById('game').classList.remove('active');
+    document.getElementById('main-menu').classList.add('active');
+});
+
+// Back button handler
+document.getElementById('back-btn').addEventListener('click', function() {
+    cancelAnimationFrame(gameState.frameId);
+    gameState.isPaused = true;
+    document.getElementById('game').classList.remove('active');
+    document.getElementById('main-menu').classList.add('active');
+});
