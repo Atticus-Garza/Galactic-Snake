@@ -455,15 +455,6 @@
     </style>
 </head>
 <body>
-    <!-- Loading Screen -->
-    <div class="loading">
-        <div class="loading-content">
-            <h2 class="loading-title">Galactic Snake</h2>
-            <div class="loading-spinner"></div>
-        </div>
-    </div>
-
-
     <div id="main-menu" class="page active">
         <div class="page-container">
             <h1>Galactic Snake</h1>
@@ -779,72 +770,6 @@
             }
         }
 
-        /* Loading Animation */
-        .loading {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background-color: var(--background);
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            z-index: 1000;
-            opacity: 1;
-            transition: opacity 0.3s ease;
-        }
-
-        .loading-content {
-            text-align: center;
-        }
-
-        .loading-title {
-            color: var(--primary);
-            font-size: 2rem;
-            margin-bottom: 2rem;
-            animation: pulse 2s ease-in-out infinite;
-        }
-
-        .loading-spinner {
-            width: 80px;
-            height: 80px;
-            margin: 0 auto;
-            position: relative;
-        }
-
-        .loading-spinner::before,
-        .loading-spinner::after {
-            content: '';
-            position: absolute;
-            border-radius: 50%;
-            animation: pulse-ring 2s ease-out infinite;
-        }
-
-        .loading-spinner::before {
-            width: 100%;
-            height: 100%;
-            background: linear-gradient(45deg, var(--primary), var(--accent));
-            animation: spin 1s linear infinite;
-            clip-path: polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%);
-        }
-
-        .loading-spinner::after {
-            width: 80%;
-            height: 80%;
-            background: var(--background);
-            top: 10%;
-            left: 10%;
-            animation: spin 1s linear infinite reverse;
-            clip-path: polygon(50% 10%, 90% 50%, 50% 90%, 10% 50%);
-        }
-
-        @keyframes spin {
-            to {
-                transform: rotate(360deg);
-            }
-        }
-
         @keyframes pulse-ring {
             0% {
                 transform: scale(0.8);
@@ -869,15 +794,20 @@
             background: var(--accent);
             border-radius: 50%;
             z-index: 100;
+            will-change: transform, opacity;
+            transform: translateZ(0);
+            backface-visibility: hidden;
+            perspective: 1000;
+            -webkit-font-smoothing: antialiased;
         }
 
         @keyframes particle-explosion {
             0% {
-                transform: translate(0, 0) scale(1);
+                transform: translate3d(0, 0, 0) scale3d(1, 1, 1);
                 opacity: 1;
             }
             100% {
-                transform: translate(var(--x), var(--y)) scale(0);
+                transform: translate3d(var(--x), var(--y), 0) scale3d(0, 0, 1);
                 opacity: 0;
             }
         }
@@ -1295,22 +1225,36 @@
             return snake.some(segment => segment.x === position.x && segment.y === position.y);
         }
 
+        // Frame timing variables
+        const FRAME_MIN_TIME = (1000/60) - (1000/65); // 60fps with tolerance
+        let lastFrameTime = 0;
+
         function gameLoop(timestamp) {
             if (gameState.isGameOver || gameState.isPaused) {
                 return;
             }
 
-            gameState.frameId = requestAnimationFrame(gameLoop);
+            // Throttle frame rate
+            const deltaTime = timestamp - lastFrameTime;
+            if (deltaTime < FRAME_MIN_TIME) {
+                gameState.frameId = requestAnimationFrame(gameLoop);
+                return;
+            }
+            lastFrameTime = timestamp;
+
+            // Use double buffering for smoother updates
+            const currentState = {
+                direction: { ...gameState.nextDirection },
+                snake: gameState.snake.map(segment => ({ ...segment })),
+                food: { ...gameState.food }
+            };
 
             // Update game state at fixed time intervals
             if (timestamp - gameState.lastUpdate >= gameState.speed) {
-                // Update direction
-                gameState.direction = { ...gameState.nextDirection };
-
                 // Calculate new head position
                 const head = {
-                    x: gameState.snake[0].x + gameState.direction.x,
-                    y: gameState.snake[0].y + gameState.direction.y
+                    x: currentState.snake[0].x + currentState.direction.x,
+                    y: currentState.snake[0].y + currentState.direction.y
                 };
 
                 // Check for collisions
@@ -1319,8 +1263,11 @@
                     return;
                 }
 
-                // Update snake positions array for interpolation
-                gameState.snakePositions = gameState.snake.map(segment => ({ ...segment }));
+                // Update snake positions array for interpolation only when needed
+                if (gameState.direction.x !== currentState.direction.x || 
+                    gameState.direction.y !== currentState.direction.y) {
+                    gameState.snakePositions = currentState.snake;
+                }
 
                 // Move snake
                 gameState.snake.unshift(head);
@@ -1443,34 +1390,50 @@
             draw();
         }
 
-        function draw(timestamp) {
-            ctx.clearRect(0, 0, GAME_CONFIG.canvasSize, GAME_CONFIG.canvasSize);
+        // Create off-screen canvas for double buffering
+        const offscreenCanvas = document.createElement('canvas');
+        const offscreenCtx = offscreenCanvas.getContext('2d');
+        offscreenCanvas.width = GAME_CONFIG.canvasSize;
+        offscreenCanvas.height = GAME_CONFIG.canvasSize;
 
-            // Calculate interpolation factor
+        // Pre-render static assets
+        const snakeSegmentPattern = document.createElement('canvas');
+        const patternCtx = snakeSegmentPattern.getContext('2d');
+        snakeSegmentPattern.width = GAME_CONFIG.gridSize;
+        snakeSegmentPattern.height = GAME_CONFIG.gridSize;
+        
+        function draw(timestamp) {
+            offscreenCtx.clearRect(0, 0, GAME_CONFIG.canvasSize, GAME_CONFIG.canvasSize);
+
+            // Calculate interpolation factor with frame timing
             const timeSinceUpdate = timestamp - gameState.lastUpdate;
             const interpolationFactor = Math.min(
                 timeSinceUpdate / gameState.speed, 
                 1
-            ) * GAME_CONFIG.snakeMovementSmoothing;
+            );
 
-            // Draw snake with interpolation
+            // Batch snake segments for faster rendering
+            const segments = new Path2D();
+            
             gameState.snake.forEach((segment, index) => {
                 let renderX = segment.x;
                 let renderY = segment.y;
 
-                // Interpolate position for smooth movement
-                if (index < gameState.snakePositions.length) {
+                // Use velocity-based interpolation for smoother movement
+                if (index < gameState.snakePositions.length && interpolationFactor < 1) {
                     const previousPos = gameState.snakePositions[index];
-                    renderX = previousPos.x + (segment.x - previousPos.x) * interpolationFactor;
-                    renderY = previousPos.y + (segment.y - previousPos.y) * interpolationFactor;
+                    const dx = segment.x - previousPos.x;
+                    const dy = segment.y - previousPos.y;
+                    renderX = previousPos.x + dx * interpolationFactor;
+                    renderY = previousPos.y + dy * interpolationFactor;
                 }
 
                 if (index === 0) {
-                    // Draw head with emoji and glow effect
-                    ctx.save();
-                    ctx.font = `${GAME_CONFIG.gridSize}px sans-serif`;
-                    ctx.textAlign = 'center';
-                    ctx.textBaseline = 'middle';
+                    // Draw head with emoji and glow effect - only update when needed
+                    offscreenCtx.save();
+                    offscreenCtx.font = `${GAME_CONFIG.gridSize}px sans-serif`;
+                    offscreenCtx.textAlign = 'center';
+                    offscreenCtx.textBaseline = 'middle';
                     
                     // Outer glow
                     ctx.shadowColor = 'var(--primary)';
@@ -2335,40 +2298,47 @@
                 });
             });
             
-            // Handle swipe gestures on game canvas
-            let touchStartX = 0;
-            let touchStartY = 0;
-            let touchEndX = 0;
-            let touchEndY = 0;
+            // Handle touch and mouse input with pointer events
+            let pointerStartX = 0;
+            let pointerStartY = 0;
+            let lastMoveTime = 0;
+            const MOVE_THROTTLE = 16; // ~60fps
             
-            canvas.addEventListener('touchstart', (e) => {
-                touchStartX = e.touches[0].clientX;
-                touchStartY = e.touches[0].clientY;
-            });
+            // Use pointer events for better performance and device compatibility
+            canvas.addEventListener('pointerdown', (e) => {
+                pointerStartX = e.clientX;
+                pointerStartY = e.clientY;
+                canvas.setPointerCapture(e.pointerId);
+            }, { passive: true });
             
-            canvas.addEventListener('touchmove', (e) => {
-                e.preventDefault(); // Prevent scrolling while swiping
-            });
-            
-            canvas.addEventListener('touchend', (e) => {
-                touchEndX = e.changedTouches[0].clientX;
-                touchEndY = e.changedTouches[0].clientY;
+            canvas.addEventListener('pointermove', (e) => {
+                const now = performance.now();
+                if (now - lastMoveTime < MOVE_THROTTLE) return;
+                lastMoveTime = now;
                 
-                const deltaX = touchEndX - touchStartX;
-                const deltaY = touchEndY - touchStartY;
+                if (!pointerStartX && !pointerStartY) return;
                 
-                // Minimum swipe distance (in pixels)
+                const deltaX = e.clientX - pointerStartX;
+                const deltaY = e.clientY - pointerStartY;
                 const minSwipeDistance = 30;
                 
-                if (Math.abs(deltaX) > Math.abs(deltaY)) {
-                    if (Math.abs(deltaX) > minSwipeDistance) {
+                if (Math.abs(deltaX) > minSwipeDistance || Math.abs(deltaY) > minSwipeDistance) {
+                    if (Math.abs(deltaX) > Math.abs(deltaY)) {
                         handleDirectionInput(deltaX > 0 ? 'right' : 'left');
-                    }
-                } else {
-                    if (Math.abs(deltaY) > minSwipeDistance) {
+                        pointerStartX = e.clientX;
+                        pointerStartY = e.clientY;
+                    } else {
                         handleDirectionInput(deltaY > 0 ? 'down' : 'up');
+                        pointerStartX = e.clientX;
+                        pointerStartY = e.clientY;
                     }
                 }
+            }, { passive: true });
+            
+            canvas.addEventListener('pointerup', () => {
+                pointerStartX = 0;
+                pointerStartY = 0;
+            }, { passive: true });
             });
         }
         
