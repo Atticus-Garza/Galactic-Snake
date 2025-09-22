@@ -950,19 +950,22 @@
         });
 
         // Payment flow (mock)
-        document.querySelectorAll('.pay-cashapp').forEach(btn => {
-            btn.addEventListener('click', function() {
-                const plan = btn.getAttribute('data-plan');
-                let price = plan === 'premium' ? '4.99' : plan === 'ultimate' ? '9.99' : '';
-                showConfirmOrderModal(plan, null, 'cashapp', price);
-            });
+        // Premium subscription buttons
+        document.getElementById('premiumCashApp').addEventListener('click', function() {
+            showConfirmOrderModal('premium', null, 'cashapp', '4.99');
         });
-        document.querySelectorAll('.pay-paypal').forEach(btn => {
-            btn.addEventListener('click', function() {
-                const plan = btn.getAttribute('data-plan');
-                let price = plan === 'premium' ? '4.99' : plan === 'ultimate' ? '9.99' : '';
-                showConfirmOrderModal(plan, null, 'paypal', price);
-            });
+        
+        document.getElementById('premiumPayPal').addEventListener('click', function() {
+            showConfirmOrderModal('premium', null, 'paypal', '4.99');
+        });
+
+        // Ultimate subscription buttons
+        document.getElementById('ultimateCashApp').addEventListener('click', function() {
+            showConfirmOrderModal('ultimate', null, 'cashapp', '9.99');
+        });
+
+        document.getElementById('ultimatePayPal').addEventListener('click', function() {
+            showConfirmOrderModal('ultimate', null, 'paypal', '9.99');
         });
 
         // Initial setup
