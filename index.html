@@ -220,19 +220,35 @@
         <div class="page-container">
             <h1>Subscription Store</h1>
             <div class="subscription-options">
-                <div class="subscription-card">
+                <div class="subscription-card" id="premiumCard">
                     <h2>Premium</h2>
                     <p>Unlock all premium features!</p>
                     <p><strong>$4.99/month</strong></p>
-                    <button id="premiumCashApp" class="pay-cashapp" data-plan="premium">Pay with CashApp</button>
-                    <button id="premiumPayPal" class="pay-paypal" data-plan="premium">Pay with PayPal</button>
+                    <div class="payment-buttons">
+                        <button class="payment-btn cashapp-btn" data-plan="premium" data-method="cashapp" data-price="4.99">
+                            <img src="https://cash.app/favicon.ico" alt="CashApp" class="payment-icon">
+                            Pay with CashApp
+                        </button>
+                        <button class="payment-btn paypal-btn" data-plan="premium" data-method="paypal" data-price="4.99">
+                            <img src="https://www.paypal.com/favicon.ico" alt="PayPal" class="payment-icon">
+                            Pay with PayPal
+                        </button>
+                    </div>
                 </div>
-                <div class="subscription-card">
+                <div class="subscription-card" id="ultimateCard">
                     <h2>Ultimate</h2>
                     <p>All premium + exclusive skins!</p>
                     <p><strong>$9.99/month</strong></p>
-                    <button id="ultimateCashApp" class="pay-cashapp" data-plan="ultimate">Pay with CashApp</button>
-                    <button id="ultimatePayPal" class="pay-paypal" data-plan="ultimate">Pay with PayPal</button>
+                    <div class="payment-buttons">
+                        <button class="payment-btn cashapp-btn" data-plan="ultimate" data-method="cashapp" data-price="9.99">
+                            <img src="https://cash.app/favicon.ico" alt="CashApp" class="payment-icon">
+                            Pay with CashApp
+                        </button>
+                        <button class="payment-btn paypal-btn" data-plan="ultimate" data-method="paypal" data-price="9.99">
+                            <img src="https://www.paypal.com/favicon.ico" alt="PayPal" class="payment-icon">
+                            Pay with PayPal
+                        </button>
+                    </div>
                 </div>
             </div>
             <div class="skins-section" style="margin-top:40px;">
@@ -399,8 +415,56 @@
         .subscription-card h2 {
             color: var(--primary-color);
         }
-        .subscription-card button {
-            margin: 8px 0;
+        .payment-buttons {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            width: 100%;
+            margin-top: 15px;
+        }
+
+        .payment-btn {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            width: 100%;
+            padding: 12px;
+            border: none;
+            border-radius: 8px;
+            font-size: 1em;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .payment-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+        }
+
+        .payment-icon {
+            width: 20px;
+            height: 20px;
+            object-fit: contain;
+        }
+
+        .cashapp-btn {
+            background-color: #00D632;
+            color: white;
+        }
+
+        .cashapp-btn:hover {
+            background-color: #00bf2c;
+        }
+
+        .paypal-btn {
+            background-color: #0070BA;
+            color: white;
+        }
+
+        .paypal-btn:hover {
+            background-color: #005ea6;
         }
         
         /* Subscription Activation Animation */
@@ -1063,23 +1127,36 @@
             navigateTo('game-page');
         });
 
-        // Payment flow (mock)
-        // Premium subscription buttons
-        document.getElementById('premiumCashApp').addEventListener('click', function() {
-            showConfirmOrderModal('premium', null, 'cashapp', '4.99');
-        });
-        
-        document.getElementById('premiumPayPal').addEventListener('click', function() {
-            showConfirmOrderModal('premium', null, 'paypal', '4.99');
-        });
+        // Payment flow with unified button handling
+        document.querySelectorAll('.payment-btn').forEach(button => {
+            button.addEventListener('click', function() {
+                const plan = this.dataset.plan;
+                const method = this.dataset.method;
+                const price = this.dataset.price;
+                
+                // Add click animation
+                this.style.transform = 'scale(0.95)';
+                setTimeout(() => {
+                    this.style.transform = '';
+                }, 100);
 
-        // Ultimate subscription buttons
-        document.getElementById('ultimateCashApp').addEventListener('click', function() {
-            showConfirmOrderModal('ultimate', null, 'cashapp', '9.99');
-        });
+                showProcessing();
+                
+                // Delay to show processing animation
+                setTimeout(() => {
+                    hideProcessing();
+                    showConfirmOrderModal(plan, null, method, price);
+                }, 500);
+            });
 
-        document.getElementById('ultimatePayPal').addEventListener('click', function() {
-            showConfirmOrderModal('ultimate', null, 'paypal', '9.99');
+            // Add hover glow effect
+            button.addEventListener('mouseenter', function() {
+                this.style.boxShadow = `0 0 20px ${this.classList.contains('cashapp-btn') ? '#00D632' : '#0070BA'}`;
+            });
+
+            button.addEventListener('mouseleave', function() {
+                this.style.boxShadow = '';
+            });
         });
 
         // Initial setup
