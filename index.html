@@ -275,17 +275,17 @@
                 <p id="buyStarsStatus" style="margin-top:10px;color:var(--accent-color);"></p>
             </div>
 
-            <!-- Buy Stars Confirmation Modal -->
-            <div id="confirmStarsModal" class="modal">
+            <!-- Buy/Subscription Confirmation Modal -->
+            <div id="confirmOrderModal" class="modal">
                 <div class="modal-content" style="box-shadow: 0 0 20px gold;">
                     <h2 style="color:gold;">Confirm Your Purchase</h2>
-                    <p id="confirmStarsText"></p>
+                    <p id="confirmOrderText"></p>
                     <div id="cashappInstructions" style="display:none;color:#FFD700;margin-bottom:10px;">
                         <strong>CashApp:</strong> Please complete your payment in CashApp and get your web receipt. Enter the code below to confirm your order.
                     </div>
                     <div style="margin:10px 0;">
                         <label for="orderCodeInput">Enter Order Code:</label>
-                        <input type="text" id="orderCodeInput" maxlength="8" style="margin-left:8px;">
+                        <input type="text" id="orderCodeInput" maxlength="12" style="margin-left:8px;">
                     </div>
                     <button id="confirmOrderButton">Confirm Order</button>
                     <button id="cancelOrderButton">Cancel</button>
@@ -645,57 +645,77 @@
     // --- Buy Stars Logic ---
     // --- Buy Stars Confirmation Logic ---
     let pendingOrder = null;
-    // Fixed reusable codes for purchases
     // Obfuscated reusable codes (base64 encoded)
     const REUSABLE_CODES = {
         premium: atob('UFJFTUlVTTExMw=='),
         ultimate: atob('VUxUUkE5OTk='),   
-        stars_50: atob('U1RBUlMwNTA='),   
-        stars_150: atob('U1RBUlMxNTA='),  
-        stars_500: atob('U1RBUlM1MDA=')   
+        stars1: atob('U1RBUlMwNTA='),   
+        stars2: atob('U1RBUlMxNTA='),  
+        stars3: atob('U1RBUlM1MDA=')   
     };
-    function showConfirmStarsModal(amount, method, price) {
-        // Use different code for each star amount
-        let code = amount === 50 ? REUSABLE_CODES.stars_50 : amount === 150 ? REUSABLE_CODES.stars_150 : amount === 500 ? REUSABLE_CODES.stars_500 : '';
+    function showConfirmOrderModal(type, amount, method, price) {
+        let code = '';
+        let text = '';
+        if (type === 'stars') {
+            code = amount === 50 ? REUSABLE_CODES.stars_50 : amount === 150 ? REUSABLE_CODES.stars_150 : amount === 500 ? REUSABLE_CODES.stars_500 : '';
+            text = `Order: ${amount} Stars for $${price} via ${method === 'cashapp' ? 'CashApp' : 'PayPal'}\nReusable code: ${code}`;
+        } else if (type === 'premium') {
+            code = REUSABLE_CODES.premium;
+            text = `Order: Premium Subscription for $${price}/month via ${method === 'cashapp' ? 'CashApp' : 'PayPal'}\nReusable code: ${code}`;
+        } else if (type === 'ultimate') {
+            code = REUSABLE_CODES.ultimate;
+            text = `Order: Ultimate Subscription for $${price}/month via ${method === 'cashapp' ? 'CashApp' : 'PayPal'}\nReusable code: ${code}`;
+        }
         pendingOrder = {
+            type,
             amount,
             method,
             price,
             code
         };
-        confirmStarsText.textContent = `Order: ${amount} Stars for $${price} via ${method === 'cashapp' ? 'CashApp' : 'PayPal'}\nReusable code: ${code}`;
+        confirmOrderText.textContent = text;
         orderCodeInput.value = '';
         orderCodeStatus.textContent = '';
         cashappInstructions.style.display = method === 'cashapp' ? 'block' : 'none';
-        confirmStarsModal.style.display = 'flex';
-        // Open payment link
+        confirmOrderModal.style.display = 'flex';
         setTimeout(() => {
             window.open(method === 'cashapp' ? 'https://cash.app/' : 'https://www.paypal.com/', '_blank');
         }, 500);
     }
-    function hideConfirmStarsModal() {
-        confirmStarsModal.style.display = 'none';
+    function hideConfirmOrderModal() {
+        confirmOrderModal.style.display = 'none';
         pendingOrder = null;
     }
     confirmOrderButton.addEventListener('click', () => {
         if (!pendingOrder) return;
-        // Accept correct reusable code for each star amount
         let entered = orderCodeInput.value.trim().toUpperCase();
-        let validCode = (pendingOrder.amount === 50 && entered === REUSABLE_CODES.stars_50)
-            || (pendingOrder.amount === 150 && entered === REUSABLE_CODES.stars_150)
-            || (pendingOrder.amount === 500 && entered === REUSABLE_CODES.stars_500);
-        if (validCode) {
-            stars += pendingOrder.amount;
-            updateCurrencyDisplay();
-            buyStarsStatus.textContent = `Order confirmed! ${pendingOrder.amount} Stars added.`;
-            hideConfirmStarsModal();
-        } else {
-            let expectedCode = pendingOrder.code;
-            orderCodeStatus.textContent = `Incorrect code. Please enter the reusable code: ${expectedCode}`;
+        let validCode = false;
+        if (pendingOrder.type === 'stars') {
+            validCode = (pendingOrder.amount === 50 && entered === REUSABLE_CODES.stars_50)
+                || (pendingOrder.amount === 150 && entered === REUSABLE_CODES.stars_150)
+                || (pendingOrder.amount === 500 && entered === REUSABLE_CODES.stars_500);
+            if (validCode) {
+                stars += pendingOrder.amount;
+                updateCurrencyDisplay();
+                buyStarsStatus.textContent = `Order confirmed! ${pendingOrder.amount} Stars added.`;
+                hideConfirmOrderModal();
+            } else {
+                let expectedCode = pendingOrder.code;
+                orderCodeStatus.textContent = `Incorrect code. Please enter the reusable code: ${expectedCode}`;
+            }
+        } else if (pendingOrder.type === 'premium' || pendingOrder.type === 'ultimate') {
+            validCode = entered === pendingOrder.code;
+            if (validCode) {
+                buyStarsStatus.textContent = `Order confirmed! ${pendingOrder.type.charAt(0).toUpperCase() + pendingOrder.type.slice(1)} subscription activated.`;
+                hideConfirmOrderModal();
+            } else {
+                let expectedCode = pendingOrder.code;
+                orderCodeStatus.textContent = `Incorrect code. Please enter the reusable code: ${expectedCode}`;
+            }
         }
     });
     cancelOrderButton.addEventListener('click', () => {
-        hideConfirmStarsModal();
+        hideConfirmOrderModal();
         buyStarsStatus.textContent = 'Order cancelled.';
     });
 
@@ -768,7 +788,7 @@
             const amount = parseInt(btn.getAttribute('data-amount'));
             const price = btn.getAttribute('data-price');
             const method = btn.getAttribute('data-method');
-            showConfirmStarsModal(amount, method, price);
+            showConfirmOrderModal('stars', amount, method, price);
         });
     });
 
@@ -842,33 +862,15 @@
         document.querySelectorAll('.pay-cashapp').forEach(btn => {
             btn.addEventListener('click', function() {
                 const plan = btn.getAttribute('data-plan');
-                showProcessing();
-                setTimeout(() => {
-                    hideProcessing();
-                    window.open('https://cash.app/', '_blank');
-                    let code = plan === 'premium' ? REUSABLE_CODES.premium : plan === 'ultimate' ? REUSABLE_CODES.ultimate : '';
-                    if (code) {
-                        alert(`Proceed to pay for ${plan} via CashApp. Use reusable code: ${code}`);
-                    } else {
-                        alert(`Proceed to pay for ${plan} via CashApp.`);
-                    }
-                }, 1200);
+                let price = plan === 'premium' ? '4.99' : plan === 'ultimate' ? '9.99' : '';
+                showConfirmOrderModal(plan, null, 'cashapp', price);
             });
         });
         document.querySelectorAll('.pay-paypal').forEach(btn => {
             btn.addEventListener('click', function() {
                 const plan = btn.getAttribute('data-plan');
-                showProcessing();
-                setTimeout(() => {
-                    hideProcessing();
-                    window.open('https://www.paypal.com/', '_blank');
-                    let code = plan === 'premium' ? REUSABLE_CODES.premium : plan === 'ultimate' ? REUSABLE_CODES.ultimate : '';
-                    if (code) {
-                        alert(`Proceed to pay for ${plan} via PayPal. Use reusable code: ${code}`);
-                    } else {
-                        alert(`Proceed to pay for ${plan} via PayPal.`);
-                    }
-                }, 1200);
+                let price = plan === 'premium' ? '4.99' : plan === 'ultimate' ? '9.99' : '';
+                showConfirmOrderModal(plan, null, 'paypal', price);
             });
         });
 
