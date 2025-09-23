@@ -17,10 +17,7 @@
                 <button id="shop-btn" class="game-btn">Shop</button>
                 <button id="high-scores-btn" class="game-btn">High Scores</button>
             </div>
-            <div class="coins">
-                <span class="coin-icon">🪙</span>
-                <span id="coin-amount">0</span>
-            </div>
+            <!-- coins moved to the Shop so purchases happen there -->
             <div class="export-controls" style="margin-top:0.75rem;">
                 <button id="export-data-btn" class="game-btn small-btn">Export Data</button>
                 <button id="import-data-btn" class="game-btn small-btn">Import Data</button>
@@ -78,19 +75,22 @@
                     <div class="item-preview snake-skin-classic"></div>
                     <h3>Classic Snake</h3>
                     <p>The original</p>
-                    <button class="game-btn shop-btn" data-item="classic" data-owned="true">Equipped</button>
+                    <button class="game-btn select-btn" data-item="classic" data-owned="true" disabled>Equipped</button>
+                    <button class="game-btn buy-btn" data-item="classic" style="display:none">Buy</button>
                 </div>
                 <div class="shop-item">
                     <div class="item-preview snake-skin-neon"></div>
                     <h3>Neon Snake</h3>
                     <p>100 🪙</p>
-                    <button class="game-btn shop-btn" data-item="neon" data-price="100">Buy</button>
+                    <button class="game-btn buy-btn" data-item="neon" data-price="100">Buy</button>
+                    <button class="game-btn select-btn" data-item="neon" style="display:none">Select</button>
                 </div>
                 <div class="shop-item">
                     <div class="item-preview snake-skin-galaxy"></div>
                     <h3>Galaxy Snake</h3>
                     <p>250 🪙</p>
-                    <button class="game-btn shop-btn" data-item="galaxy" data-price="250">Buy</button>
+                    <button class="game-btn buy-btn" data-item="galaxy" data-price="250">Buy</button>
+                    <button class="game-btn select-btn" data-item="galaxy" style="display:none">Select</button>
                 </div>
             </div>
             <!-- Subscriptions -->
@@ -102,7 +102,6 @@
                     <div class="sub-buttons">
                         <button class="game-btn pay-btn" data-method="cashapp">Pay with Cash App</button>
                         <button class="game-btn pay-btn" data-method="paypal">Pay with PayPal</button>
-                        <button class="game-btn mark-paid-btn">I Paid — Activate</button>
                     </div>
                 </div>
                 <div class="subscription-item" data-tier="ultra" data-price="15" data-duration-days="365" data-cashapp="https://cash.app/$YOUR_CASHTAG" data-paypal="https://paypal.me/YOUR_PAYPAL">
@@ -111,7 +110,6 @@
                     <div class="sub-buttons">
                         <button class="game-btn pay-btn" data-method="cashapp">Pay with Cash App</button>
                         <button class="game-btn pay-btn" data-method="paypal">Pay with PayPal</button>
-                        <button class="game-btn mark-paid-btn">I Paid — Activate</button>
                     </div>
                 </div>
             </div>

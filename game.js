@@ -57,6 +57,7 @@ const shopBtn = document.getElementById("shop-btn");
 const shopModal = document.getElementById("shopModal");
 const closeShopBtn = document.getElementById("close-shop-btn");
 const coinAmountDisplay = document.getElementById("coin-amount");
+const shopCoinsDisplay = document.getElementById('shop-coins');
 const subscriptionStatus = document.getElementById("subscription-status");
 const paymentRequestModal = document.getElementById('paymentRequestModal');
 const prName = document.getElementById('pr-name');
@@ -322,6 +323,7 @@ function openShop() {
     // Load subscriptions and bind buttons each time shop opens
     loadSubscriptions();
     bindSubscriptionButtons();
+    bindShopItemButtons();
     updateShopDisplay();
     updateSubscriptionStatusDisplay();
 }
@@ -332,19 +334,66 @@ function closeShop() {
 }
 
 function updateShopDisplay() {
-    coinAmountDisplay.textContent = gameState.coins;
+    // Show coins in shop balance display
+    if (shopCoinsDisplay) shopCoinsDisplay.textContent = gameState.coins;
     const shopItems = document.querySelectorAll(".shop-item");
     shopItems.forEach(item => {
-        const skinName = item.dataset.skin;
+        const skinName = item.dataset.item || item.dataset.skin;
         const buyBtn = item.querySelector(".buy-btn");
         const selectBtn = item.querySelector(".select-btn");
         const owned = gameState.ownedSkins.has(skinName);
         const selected = gameState.currentSkin === skinName;
 
-        buyBtn.style.display = owned ? "none" : "block";
-        selectBtn.style.display = owned ? "block" : "none";
-        selectBtn.disabled = selected;
-        selectBtn.textContent = selected ? "Selected" : "Select";
+        if (buyBtn) buyBtn.style.display = owned ? "none" : "block";
+        if (selectBtn) {
+            selectBtn.style.display = owned ? "block" : "none";
+            selectBtn.disabled = selected;
+            selectBtn.textContent = selected ? "Selected" : "Select";
+        }
+    });
+}
+
+// Buy a skin with coins
+function buySkin(itemName, price) {
+    price = parseInt(price) || 0;
+    if (gameState.coins < price) {
+        alert('Not enough coins');
+        return;
+    }
+    gameState.coins -= price;
+    gameState.ownedSkins.add(itemName);
+    localStorage.setItem('coins', gameState.coins);
+    localStorage.setItem('ownedSkins', JSON.stringify(Array.from(gameState.ownedSkins)));
+    if (shopCoinsDisplay) shopCoinsDisplay.textContent = gameState.coins;
+    alert(`${itemName} purchased!`);
+    updateShopDisplay();
+}
+
+// Select/equip a skin
+function selectSkin(itemName) {
+    if (!gameState.ownedSkins.has(itemName)) return;
+    gameState.currentSkin = itemName;
+    localStorage.setItem('currentSkin', itemName);
+    updateShopDisplay();
+}
+
+// Hook buy/select buttons
+function bindShopItemButtons() {
+    document.querySelectorAll('.shop-item').forEach(item => {
+        const buyBtn = item.querySelector('.buy-btn');
+        const selectBtn = item.querySelector('.select-btn');
+        const itemName = item.dataset.item || item.dataset.skin;
+        if (buyBtn) {
+            buyBtn.addEventListener('click', () => {
+                const price = buyBtn.dataset.price || buyBtn.getAttribute('data-price');
+                buySkin(itemName, price);
+            });
+        }
+        if (selectBtn) {
+            selectBtn.addEventListener('click', () => {
+                selectSkin(itemName);
+            });
+        }
     });
 }
 
