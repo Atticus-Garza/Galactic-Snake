@@ -37,7 +37,8 @@ const gameState = {
     lastInputTime: 0,
     inputDelay: 50,
     currentSkin: localStorage.getItem("currentSkin") || "classic",
-    ownedSkins: new Set(JSON.parse(localStorage.getItem("ownedSkins")) || ["classic"])
+    ownedSkins: new Set(JSON.parse(localStorage.getItem("ownedSkins")) || ["classic"]),
+    subscriptions: JSON.parse(localStorage.getItem('subscriptions') || '{}')
 };
 
 // DOM Elements
@@ -56,6 +57,7 @@ const shopBtn = document.getElementById("shop-btn");
 const shopModal = document.getElementById("shopModal");
 const closeShopBtn = document.getElementById("close-shop-btn");
 const coinAmountDisplay = document.getElementById("coin-amount");
+const subscriptionStatus = document.getElementById("subscription-status");
 
 // Initialize canvas with proper pixel ratio
 function initCanvas() {
@@ -74,12 +76,13 @@ document.querySelectorAll(".touch-btn").forEach(btn => {
     btn.addEventListener("mousedown", handleTouchControl);
 });
 
-playBtn.addEventListener("click", startGame);
-backBtn.addEventListener("click", goToMainMenu);
-restartBtn.addEventListener("click", startGame);
-mainMenuBtn.addEventListener("click", goToMainMenu);
-shopBtn.addEventListener("click", openShop);
-closeShopBtn.addEventListener("click", closeShop);
+// Safe element event binding (in case HTML is modified)
+if (playBtn) playBtn.addEventListener("click", startGame);
+if (backBtn) backBtn.addEventListener("click", goToMainMenu);
+if (restartBtn) restartBtn.addEventListener("click", startGame);
+if (mainMenuBtn) mainMenuBtn.addEventListener("click", goToMainMenu);
+if (shopBtn) shopBtn.addEventListener("click", openShop);
+if (closeShopBtn) closeShopBtn.addEventListener("click", closeShop);
 
 // Navigation Functions
 function goToMainMenu() {
@@ -96,7 +99,11 @@ function goToMainMenu() {
 function openShop() {
     shopModal.classList.add("active");
     mainMenu.classList.remove("active");
+    // Load subscriptions and bind buttons each time shop opens
+    loadSubscriptions();
+    bindSubscriptionButtons();
     updateShopDisplay();
+    updateSubscriptionStatusDisplay();
 }
 
 function closeShop() {
@@ -120,6 +127,98 @@ function updateShopDisplay() {
         selectBtn.textContent = selected ? "Selected" : "Select";
     });
 }
+
+// Subscriptions
+function loadSubscriptions() {
+    const data = JSON.parse(localStorage.getItem('subscriptions') || '{}');
+    gameState.subscriptions = data;
+}
+
+function saveSubscriptions() {
+    localStorage.setItem('subscriptions', JSON.stringify(gameState.subscriptions || {}));
+}
+
+function getSubscriptionInfo(tier) {
+    const subs = gameState.subscriptions || {};
+    return subs[tier] || null;
+}
+
+function isSubscriptionActive(tier) {
+    const info = getSubscriptionInfo(tier);
+    if (!info) return false;
+    const now = Date.now();
+    return now < info.expiresAt;
+}
+
+function activateSubscription(tier, durationDays) {
+    const now = Date.now();
+    const expiresAt = now + durationDays * 24 * 60 * 60 * 1000;
+    gameState.subscriptions = gameState.subscriptions || {};
+    gameState.subscriptions[tier] = { activatedAt: now, expiresAt };
+    saveSubscriptions();
+    applySubscriptionPerks(tier);
+    updateSubscriptionStatusDisplay();
+}
+
+function applySubscriptionPerks(tier) {
+    // Give immediate coin bonus for activation
+    if (tier === 'premium') {
+        gameState.coins += 50;
+    } else if (tier === 'ultra') {
+        gameState.coins += 300;
+    }
+    localStorage.setItem('coins', gameState.coins);
+    coinAmountDisplay.textContent = gameState.coins;
+}
+
+function updateSubscriptionStatusDisplay() {
+    const parts = [];
+    ['premium','ultra'].forEach(tier => {
+        const info = getSubscriptionInfo(tier);
+        if (info && isSubscriptionActive(tier)) {
+            const remainingMs = info.expiresAt - Date.now();
+            const days = Math.ceil(remainingMs / (24*60*60*1000));
+            parts.push(`${tier.toUpperCase()}: active (${days} day(s) left)`);
+        } else if (info) {
+            parts.push(`${tier.toUpperCase()}: expired`);
+        } else {
+            parts.push(`${tier.toUpperCase()}: inactive`);
+        }
+    });
+    if (subscriptionStatus) subscriptionStatus.textContent = parts.join(' | ');
+}
+
+// Hook up subscription buttons when shop opens
+function bindSubscriptionButtons() {
+    const subItems = document.querySelectorAll('.subscription-item');
+    subItems.forEach(item => {
+        const tier = item.dataset.tier;
+        const cashappUrl = item.dataset.cashapp;
+        const paypalUrl = item.dataset.paypal;
+        item.querySelectorAll('.pay-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const method = btn.dataset.method;
+                // open the link in a new tab
+                const url = method === 'paypal' ? paypalUrl : cashappUrl;
+                window.open(url, '_blank');
+            });
+        });
+
+        const markPaid = item.querySelector('.mark-paid-btn');
+        if (markPaid) {
+            markPaid.addEventListener('click', () => {
+            // For manual activation: ask for confirmation then activate locally
+            const duration = parseInt(item.dataset.durationDays) || 30;
+            const ok = confirm(`Mark ${tier} as paid and activate for ${duration} day(s)?`);
+            if (ok) {
+                activateSubscription(tier, duration);
+                alert(`${tier} activated locally. Thank you!`);
+            }
+            });
+        }
+    });
+}
+
 
 // Game Functions
 function resetGame() {
@@ -518,3 +617,21 @@ function handleTouchControl(event) {
     
     gameState.lastInputTime = now;
 }
+
+// Initialization on load
+document.addEventListener('DOMContentLoaded', () => {
+    initCanvas();
+    // Ensure displays reflect stored values
+    coinAmountDisplay.textContent = gameState.coins;
+    scoreElement.textContent = gameState.score;
+    loadSubscriptions();
+    updateSubscriptionStatusDisplay();
+    // Bind subscription buttons if shop is present
+    bindSubscriptionButtons();
+
+    // Resize canvas on window resize to maintain pixel ratio
+    window.addEventListener('resize', () => {
+        // reset and re-init
+        initCanvas();
+    });
+});

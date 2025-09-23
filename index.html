@@ -88,6 +88,29 @@
                     <button class="game-btn shop-btn" data-item="galaxy" data-price="250">Buy</button>
                 </div>
             </div>
+            <!-- Subscriptions -->
+            <h3 style="margin-top:1rem;">Subscriptions</h3>
+            <div class="subscriptions">
+                <div class="subscription-item" data-tier="premium" data-price="5" data-duration-days="30" data-cashapp="https://cash.app/$YOUR_CASHTAG" data-paypal="https://paypal.me/YOUR_PAYPAL">
+                    <h4>Premium — $5 / 30 days</h4>
+                    <p>Extra skins + small coin bonus</p>
+                    <div class="sub-buttons">
+                        <button class="game-btn pay-btn" data-method="cashapp">Pay with Cash App</button>
+                        <button class="game-btn pay-btn" data-method="paypal">Pay with PayPal</button>
+                        <button class="game-btn mark-paid-btn">I Paid — Activate</button>
+                    </div>
+                </div>
+                <div class="subscription-item" data-tier="ultra" data-price="15" data-duration-days="365" data-cashapp="https://cash.app/$YOUR_CASHTAG" data-paypal="https://paypal.me/YOUR_PAYPAL">
+                    <h4>Ultra — $15 / 365 days</h4>
+                    <p>All premium perks + larger coin bonus</p>
+                    <div class="sub-buttons">
+                        <button class="game-btn pay-btn" data-method="cashapp">Pay with Cash App</button>
+                        <button class="game-btn pay-btn" data-method="paypal">Pay with PayPal</button>
+                        <button class="game-btn mark-paid-btn">I Paid — Activate</button>
+                    </div>
+                </div>
+            </div>
+            <div id="subscription-status" style="margin-top:1rem;color:#aaf;"></div>
             <button id="close-shop-btn" class="game-btn">Close</button>
         </div>
     </div>

@@ -274,6 +274,34 @@ canvas {
     margin-bottom: 2rem;
 }
 
+/* Make shop items scrollable when there are many items */
+.shop-items {
+    max-height: 40vh;
+    overflow-y: auto;
+    padding-right: 0.5rem;
+}
+
+.subscriptions {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    gap: 1rem;
+    width: 100%;
+}
+
+.subscription-item {
+    background: linear-gradient(180deg, rgba(255,255,255,0.03), rgba(255,255,255,0.01));
+    border: 2px dashed rgba(255,255,255,0.06);
+    padding: 1rem;
+    border-radius: 12px;
+}
+
+.subscription-item h4 { color: var(--secondary); margin-bottom: 0.25rem; }
+.subscription-item p { font-size: 0.95rem; opacity: 0.9; margin-bottom: 0.5rem; }
+
+.sub-buttons { display:flex; gap:0.5rem; flex-wrap:wrap; }
+.sub-buttons .game-btn { flex:1; min-width: 110px; }
+
+
 .shop-item {
     background: rgba(255, 255, 255, 0.05);
     border-radius: 12px;
