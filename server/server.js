@@ -4,6 +4,7 @@ const fetch = require('node-fetch');
 const nodemailer = require('nodemailer');
 const cors = require('cors');
 const bodyParser = require('body-parser');
+const crypto = require('crypto');
 
 const app = express();
 app.use(cors());
@@ -68,14 +69,30 @@ app.post('/api/request-payment', async (req, res) => {
 // body: { id, tier, email }
 app.post('/api/admin/approve', async (req, res) => {
   const { id, tier, email } = req.body;
-  // create an activation code
-  const code = Math.random().toString(36).slice(2, 10).toUpperCase();
+  // create a secure activation code
+  const code = crypto.randomBytes(4).toString('hex').toUpperCase(); // 8 hex chars
 
   // Store code on request
   if (global.requests) {
     const r = global.requests.find(x => x.id === id);
-    if (r) r.status = 'approved';
-    r.activationCode = code;
+    if (r) {
+      r.status = 'approved';
+      r.activationCode = code;
+    }
+  }
+
+  // Post code & details to Discord webhook (so admins can see code and send it)
+  if (DISCORD_WEBHOOK) {
+    try {
+      const content = `✅ Approved payment request\nTier: ${tier}\nEmail: ${email || '—'}\nCode: **${code}**`;
+      await fetch(DISCORD_WEBHOOK, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ content })
+      });
+    } catch (err) {
+      console.error('Failed to post activation to Discord webhook', err);
+    }
   }
 
   // Send activation code via email if transporter available

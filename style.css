@@ -247,6 +247,28 @@ canvas {
 .admin-request div { margin-bottom:0.25rem; }
 .admin-actions { display:flex; gap:0.5rem; }
 
+/* Subscription activation animation */
+.sub-activate-anim {
+    position: fixed;
+    left: 50%;
+    top: 20%;
+    transform: translateX(-50%);
+    background: linear-gradient(90deg, rgba(0,255,170,0.1), rgba(0,170,255,0.06));
+    border: 2px solid var(--primary);
+    padding: 1rem 1.5rem;
+    border-radius: 12px;
+    color: var(--primary);
+    z-index: 2000;
+    box-shadow: 0 10px 40px rgba(0,255,170,0.12);
+    animation: floatUp 1.2s ease-out forwards;
+}
+
+@keyframes floatUp {
+    0% { opacity: 0; transform: translateX(-50%) translateY(10px) scale(0.95); }
+    60% { opacity: 1; transform: translateX(-50%) translateY(-8px) scale(1.02); }
+    100% { opacity: 0; transform: translateX(-50%) translateY(-50px) scale(0.9); }
+}
+
 @media (max-width: 768px) {
     h1 { font-size: 3rem; }
     .game-btn { font-size: 1.2rem; min-width: 140px; }

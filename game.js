@@ -484,6 +484,17 @@ function applySubscriptionPerks(tier) {
     }
     localStorage.setItem('coins', gameState.coins);
     coinAmountDisplay.textContent = gameState.coins;
+    // play activation animation
+    playSubscriptionAnimation(tier);
+}
+
+function playSubscriptionAnimation(tier) {
+    const el = document.createElement('div');
+    el.className = 'sub-activate-anim';
+    el.textContent = `${tier.toUpperCase()} activated! Enjoy your perks.`;
+    document.body.appendChild(el);
+    // remove after animation
+    setTimeout(() => { el.remove(); }, 1400);
 }
 
 function updateSubscriptionStatusDisplay() {
