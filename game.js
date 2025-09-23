@@ -3,30 +3,52 @@ const GAME_CONFIG = {
     canvasSize: 400,
     gridSize: 20,
     initialSpeed: 200,
-    speedIncrease: 5,
-    snakeMovementSmoothing: 0.15
+    speedIncrease: 2,
+    snakeMovementSmoothing: 0.15,
+    maxSpeed: 80,
+    colors: {
+        snake: '#00ffaa',
+        food: '#ff3366',
+        grid: '#1a1a4a',
+        powerup: '#ff00ff'
+    },
+    powerUpDuration: 5000,
+    powerUpSpawnChance: 0.1
 };
 
 // Game State
 const gameState = {
     snake: [],
     food: { x: 0, y: 0 },
+    powerUp: null,
     direction: { x: 1, y: 0 },
     nextDirection: { x: 1, y: 0 },
     score: 0,
+    highScore: localStorage.getItem('highScore') || 0,
     speed: GAME_CONFIG.initialSpeed,
     lastUpdate: 0,
     frameId: null,
     isGameOver: false,
     isPaused: false,
-    snakePositions: []
+    snakePositions: [],
+    powerUpActive: false,
+    powerUpTimer: null,
+    lastInputTime: 0,
+    inputDelay: 50
 };
 
 // DOM Elements
 const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
-canvas.width = GAME_CONFIG.canvasSize;
-canvas.height = GAME_CONFIG.canvasSize;
+const scoreElement = document.getElementById('score');
+const finalScoreElement = document.getElementById('finalScore');
+const gameOverModal = document.getElementById('gameOverModal');
+const mainMenuBtn = document.getElementById('menu-btn');
+const playBtn = document.getElementById('play-btn');
+const backBtn = document.getElementById('back-btn');
+const restartBtn = document.getElementById('restart-btn');
+const mainMenu = document.getElementById('main-menu');
+const game = document.getElementById('game');
 
 // Game Initialization
 function initializeGame() {
@@ -49,12 +71,116 @@ function initializeGame() {
     gameLoop(gameState.lastUpdate);
 }
 
+// Initialize canvas and context with pixel ratio handling
+function initCanvas() {
+    const pixelRatio = window.devicePixelRatio || 1;
+    canvas.width = GAME_CONFIG.canvasSize * pixelRatio;
+    canvas.height = GAME_CONFIG.canvasSize * pixelRatio;
+    canvas.style.width = `${GAME_CONFIG.canvasSize}px`;
+    canvas.style.height = `${GAME_CONFIG.canvasSize}px`;
+    ctx.scale(pixelRatio, pixelRatio);
+}
+
+// Event Listeners
+document.addEventListener('keydown', handleKeyPress);
+document.querySelectorAll('.touch-btn').forEach(btn => {
+    btn.addEventListener('touchstart', handleTouchControl);
+    btn.addEventListener('mousedown', handleTouchControl);
+});
+
+// Handle keyboard input
+function handleKeyPress(event) {
+    if (gameState.isGameOver) return;
+    
+    const now = performance.now();
+    if (now - gameState.lastInputTime < gameState.inputDelay) return;
+    
+    const key = event.key.toLowerCase();
+    const currentDirection = gameState.direction;
+    
+    // Prevent 180-degree turns
+    switch (key) {
+        case 'arrowup':
+        case 'w':
+            if (currentDirection.y !== 1) {
+                gameState.nextDirection = { x: 0, y: -1 };
+            }
+            break;
+        case 'arrowdown':
+        case 's':
+            if (currentDirection.y !== -1) {
+                gameState.nextDirection = { x: 0, y: 1 };
+            }
+            break;
+        case 'arrowleft':
+        case 'a':
+            if (currentDirection.x !== 1) {
+                gameState.nextDirection = { x: -1, y: 0 };
+            }
+            break;
+        case 'arrowright':
+        case 'd':
+            if (currentDirection.x !== -1) {
+                gameState.nextDirection = { x: 1, y: 0 };
+            }
+            break;
+        case ' ':
+        case 'p':
+            togglePause();
+            break;
+    }
+    
+    gameState.lastInputTime = now;
+}
+
+// Handle touch/click controls
+function handleTouchControl(event) {
+    event.preventDefault();
+    if (gameState.isGameOver) return;
+    
+    const now = performance.now();
+    if (now - gameState.lastInputTime < gameState.inputDelay) return;
+    
+    const direction = event.target.dataset.direction;
+    const currentDirection = gameState.direction;
+    
+    switch (direction) {
+        case 'up':
+            if (currentDirection.y !== 1) {
+                gameState.nextDirection = { x: 0, y: -1 };
+            }
+            break;
+        case 'down':
+            if (currentDirection.y !== -1) {
+                gameState.nextDirection = { x: 0, y: 1 };
+            }
+            break;
+        case 'left':
+            if (currentDirection.x !== 1) {
+                gameState.nextDirection = { x: -1, y: 0 };
+            }
+            break;
+        case 'right':
+            if (currentDirection.x !== -1) {
+                gameState.nextDirection = { x: 1, y: 0 };
+            }
+            break;
+    }
+    
+    gameState.lastInputTime = now;
+}
+
 // Frame timing variables
 const FRAME_MIN_TIME = (1000/60) - (1000/65); // 60fps with tolerance
 let lastFrameTime = 0;
 
 function gameLoop(timestamp) {
-    if (gameState.isGameOver || gameState.isPaused) {
+    if (gameState.isGameOver) {
+        return;
+    }
+
+    if (gameState.isPaused) {
+        gameState.frameId = requestAnimationFrame(gameLoop);
         return;
     }
 
@@ -66,35 +192,26 @@ function gameLoop(timestamp) {
     }
     lastFrameTime = timestamp;
 
-    // Use double buffering for smoother updates
-    const currentState = {
-        direction: { ...gameState.nextDirection },
-        snake: gameState.snake.map(segment => ({ ...segment })),
-        food: { ...gameState.food }
-    };
-
     // Update game state at fixed time intervals
     if (timestamp - gameState.lastUpdate >= gameState.speed) {
-        // Calculate new head position
         const head = {
-            x: currentState.snake[0].x + currentState.direction.x,
-            y: currentState.snake[0].y + currentState.direction.y
+            x: gameState.snake[0].x + gameState.nextDirection.x,
+            y: gameState.snake[0].y + gameState.nextDirection.y
         };
 
-        // Check for collisions
-        if (isCollision(head)) {
+        // Wrap around screen edges
+        head.x = (head.x + GAME_CONFIG.gridSize) % GAME_CONFIG.gridSize;
+        head.y = (head.y + GAME_CONFIG.gridSize) % GAME_CONFIG.gridSize;
+
+        // Check for collisions with self
+        if (isSelfCollision(head)) {
             endGame();
             return;
         }
 
-        // Update snake positions array for interpolation only when needed
-        if (gameState.direction.x !== currentState.direction.x || 
-            gameState.direction.y !== currentState.direction.y) {
-            gameState.snakePositions = currentState.snake;
-        }
-
         // Move snake
         gameState.snake.unshift(head);
+        gameState.direction = { ...gameState.nextDirection };
         
         // Check for food collision
         if (head.x === gameState.food.x && head.y === gameState.food.y) {
