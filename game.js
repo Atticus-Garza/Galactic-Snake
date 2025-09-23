@@ -764,19 +764,49 @@ function drawSnake(snake) {
     const radius = cellSize / 2;
     
     // Draw snake body
+    const skin = gameState.currentSkin || 'classic';
+
     snake.forEach((segment, index) => {
         const x = (segment.x + 0.5) * cellSize;
         const y = (segment.y + 0.5) * cellSize;
-        
-        ctx.fillStyle = GAME_CONFIG.colors.snake;
+
+        ctx.save();
+
+        // Determine style per skin
+        if (skin === 'neon') {
+            // neon gradient with glow
+            const g = ctx.createRadialGradient(x, y, 1, x, y, radius * 1.5);
+            g.addColorStop(0, '#ffffff');
+            g.addColorStop(0.2, '#ff00ff');
+            g.addColorStop(0.6, '#00ffff');
+            g.addColorStop(1, 'rgba(0,0,0,0)');
+            ctx.fillStyle = g;
+            ctx.shadowColor = '#ff00ff';
+            ctx.shadowBlur = 12;
+        } else if (skin === 'galaxy') {
+            // galaxy gradient
+            const g = ctx.createLinearGradient(x - radius, y - radius, x + radius, y + radius);
+            g.addColorStop(0, '#6600ff');
+            g.addColorStop(0.5, '#ff00ff');
+            g.addColorStop(1, '#00ffff');
+            ctx.fillStyle = g;
+            ctx.shadowColor = 'rgba(102,0,255,0.6)';
+            ctx.shadowBlur = 8;
+        } else {
+            // classic
+            ctx.fillStyle = GAME_CONFIG.colors.snake;
+            ctx.shadowColor = 'transparent';
+            ctx.shadowBlur = 0;
+        }
+
         if (index === 0) { // Head
             ctx.beginPath();
             ctx.arc(x, y, radius * 0.8, 0, Math.PI * 2);
             ctx.fill();
-            
+
             // Eyes
             const eyeOffset = radius * 0.3;
-            ctx.fillStyle = "#000";
+            ctx.fillStyle = '#000';
             ctx.beginPath();
             ctx.arc(x + eyeOffset, y - eyeOffset, radius * 0.1, 0, Math.PI * 2);
             ctx.arc(x + eyeOffset, y + eyeOffset, radius * 0.1, 0, Math.PI * 2);
@@ -785,7 +815,21 @@ function drawSnake(snake) {
             ctx.beginPath();
             ctx.arc(x, y, radius * 0.6, 0, Math.PI * 2);
             ctx.fill();
+
+            // add subtle stars for galaxy skin
+            if (skin === 'galaxy') {
+                // deterministic tiny sparkle based on position
+                const seed = ((segment.x * 73856093) ^ (segment.y * 19349663)) % 100;
+                if (seed % 7 === 0) {
+                    ctx.fillStyle = 'rgba(255,255,255,0.9)';
+                    ctx.beginPath();
+                    ctx.arc(x + (seed % 3) - 1, y + ((seed+3) % 3) - 1, Math.max(0.6, radius * 0.08), 0, Math.PI * 2);
+                    ctx.fill();
+                }
+            }
         }
+
+        ctx.restore();
     });
 }
 
