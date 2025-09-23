@@ -99,6 +99,8 @@ h1 {
     z-index: 1;
 }
 
+.game-btn.small-btn { padding:0.5rem 1rem; font-size:0.9rem; min-width: auto; }
+
 .game-btn::before {
     content: "";
     position: absolute;

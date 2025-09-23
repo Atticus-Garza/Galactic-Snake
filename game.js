@@ -70,6 +70,10 @@ const adminModal = document.getElementById('adminModal');
 const adminRequestsList = document.getElementById('admin-requests-list');
 const adminClose = document.getElementById('admin-close');
 
+const exportDataBtn = document.getElementById('export-data-btn');
+const importDataBtn = document.getElementById('import-data-btn');
+const importFileInput = document.getElementById('importFile');
+
 // Payment requests stored in localStorage under 'paymentRequests'
 function loadPaymentRequests() {
     return JSON.parse(localStorage.getItem('paymentRequests') || '[]');
@@ -211,6 +215,68 @@ function hookSubscriptionPayButtonsForRequests() {
 // Call this during initialization too
 document.addEventListener('DOMContentLoaded', () => {
     hookSubscriptionPayButtonsForRequests();
+    // Export / Import handlers
+    if (exportDataBtn) exportDataBtn.addEventListener('click', () => {
+        const payload = {
+            coins: gameState.coins,
+            highScore: gameState.highScore,
+            subscriptions: gameState.subscriptions || {},
+            ownedSkins: Array.from(gameState.ownedSkins || []),
+            paymentRequests: loadPaymentRequests()
+        };
+        const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'galactic-snake-data.json';
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        URL.revokeObjectURL(url);
+    });
+
+    if (importDataBtn && importFileInput) importDataBtn.addEventListener('click', () => {
+        importFileInput.value = '';
+        importFileInput.click();
+    });
+
+    if (importFileInput) importFileInput.addEventListener('change', (e) => {
+        const file = e.target.files && e.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = (ev) => {
+            try {
+                const data = JSON.parse(ev.target.result);
+                const confirmMerge = confirm('Importing will merge data into local storage. Continue?');
+                if (!confirmMerge) return;
+                if (typeof data.coins === 'number') {
+                    gameState.coins = data.coins;
+                    localStorage.setItem('coins', gameState.coins);
+                    if (coinAmountDisplay) coinAmountDisplay.textContent = gameState.coins;
+                }
+                if (typeof data.highScore === 'number') {
+                    gameState.highScore = data.highScore;
+                    localStorage.setItem('highScore', gameState.highScore);
+                }
+                if (data.subscriptions) {
+                    gameState.subscriptions = data.subscriptions;
+                    saveSubscriptions();
+                    updateSubscriptionStatusDisplay();
+                }
+                if (Array.isArray(data.ownedSkins)) {
+                    gameState.ownedSkins = new Set(data.ownedSkins);
+                    localStorage.setItem('ownedSkins', JSON.stringify(Array.from(gameState.ownedSkins)));
+                }
+                if (Array.isArray(data.paymentRequests)) {
+                    savePaymentRequests(data.paymentRequests);
+                }
+                alert('Import complete.');
+            } catch (err) {
+                alert('Failed to import: ' + err.message);
+            }
+        };
+        reader.readAsText(file);
+    });
 });
 
 // Initialize canvas with proper pixel ratio
