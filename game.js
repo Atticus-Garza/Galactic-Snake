@@ -67,6 +67,8 @@ const prRef = document.getElementById('pr-ref');
 const prProof = document.getElementById('pr-proof');
 const prSubmit = document.getElementById('pr-submit');
 const prCancel = document.getElementById('pr-cancel');
+const prEmail = document.getElementById('pr-email');
+const prAccount = document.getElementById('pr-account');
 const adminModal = document.getElementById('adminModal');
 const adminRequestsList = document.getElementById('admin-requests-list');
 const adminClose = document.getElementById('admin-close');
@@ -107,8 +109,10 @@ if (prSubmit) {
         const request = {
             id: 'req_' + Date.now(),
             name: prName.value || null,
+            email: prEmail.value || null,
             tier: prTier.value,
             method: prMethod.value,
+            account: prAccount.value || null,
             reference: prRef.value || null,
             proof: prProof.value || null,
             status: 'pending',
@@ -146,9 +150,11 @@ function renderAdminRequests() {
     list.forEach(req => {
         const el = document.createElement('div');
         el.className = 'admin-request';
-        el.innerHTML = `
+            el.innerHTML = `
             <div><strong>${req.tier.toUpperCase()}</strong> — ${req.method} — ${new Date(req.submittedAt).toLocaleString()}</div>
             <div>Name: ${req.name || '—'}</div>
+            <div>Email: ${req.email || '—'}</div>
+            <div>Account: ${req.account || '—'}</div>
             <div>Ref: ${req.reference || '—'}</div>
             <div>Proof: ${req.proof ? `<a href="${req.proof}" target="_blank">link</a>` : '—'}</div>
             <div>Status: <span data-id="${req.id}">${req.status}</span></div>
