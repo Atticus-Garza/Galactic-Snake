@@ -1,25 +1,30 @@
 :root {
-    --background: #000000;
-    --primary: #00ff00;
-    --accent: #ff00ff;
+    --background: #0a0a2a;
+    --primary: #00ffaa;
+    --secondary: #ff00ff;
     --text: #ffffff;
-    --secondary: #404040;
+    --grid: #1a1a4a;
+    --food: #ff3366;
+    --snake: #00ffaa;
 }
 
 * {
     margin: 0;
     padding: 0;
     box-sizing: border-box;
+    font-family: "Orbitron", sans-serif;
 }
 
 body {
-    font-family: 'Arial', sans-serif;
     background-color: var(--background);
     color: var(--text);
     min-height: 100vh;
     display: flex;
     flex-direction: column;
     overflow: hidden;
+    background-image: 
+        radial-gradient(circle at 50% 50%, transparent 0%, rgba(10, 10, 42, 0.8) 100%),
+        url("data:image/svg+xml,%3Csvg width=\"100\" height=\"100\" viewBox=\"0 0 100 100\" xmlns=\"http://www.w3.org/2000/svg\"%3E%3Ccircle cx=\"50\" cy=\"50\" r=\"1\" fill=\"%23ffffff\" opacity=\"0.2\"/%3E%3C/svg%3E");
 }
 
 .page {
@@ -29,6 +34,12 @@ body {
     position: fixed;
     top: 0;
     left: 0;
+    animation: fadeIn 0.5s ease-in-out;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
 }
 
 .page.active {
@@ -49,37 +60,64 @@ body {
 }
 
 h1 {
-    font-size: 3rem;
+    font-size: 4rem;
     color: var(--primary);
     text-align: center;
-    text-shadow: 0 0 10px var(--primary);
+    text-shadow: 0 0 20px var(--primary);
     margin-bottom: 2rem;
+    letter-spacing: 4px;
+    animation: glow 2s ease-in-out infinite alternate;
+}
+
+@keyframes glow {
+    from { text-shadow: 0 0 20px var(--primary); }
+    to { text-shadow: 0 0 30px var(--primary), 0 0 40px var(--secondary); }
 }
 
 .button-group {
     display: flex;
-    gap: 1rem;
+    gap: 1.5rem;
     flex-wrap: wrap;
     justify-content: center;
 }
 
-button {
-    padding: 0.8rem 1.6rem;
-    font-size: 1.2rem;
+.game-btn {
+    padding: 1rem 2rem;
+    font-size: 1.4rem;
     border: 2px solid var(--primary);
     background: transparent;
     color: var(--primary);
     cursor: pointer;
-    border-radius: 4px;
+    border-radius: 8px;
     transition: all 0.3s ease;
-    min-width: 120px;
+    min-width: 160px;
     text-align: center;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    position: relative;
+    overflow: hidden;
+    z-index: 1;
 }
 
-button:hover {
+.game-btn::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
     background: var(--primary);
+    transition: all 0.3s ease;
+    z-index: -1;
+}
+
+.game-btn:hover::before {
+    left: 0;
+}
+
+.game-btn:hover {
     color: var(--background);
-    box-shadow: 0 0 10px var(--primary);
+    box-shadow: 0 0 20px var(--primary);
 }
 
 .game-container {
@@ -94,57 +132,49 @@ canvas {
     width: 100%;
     height: 100%;
     background: var(--background);
-    border: 2px solid var(--primary);
-    border-radius: 4px;
+    border: 3px solid var(--primary);
+    border-radius: 8px;
+    box-shadow: 0 0 30px rgba(0, 255, 170, 0.2);
 }
 
 .game-ui {
-    position: fixed;
-    top: 1rem;
-    left: 1rem;
-    right: 1rem;
+    position: absolute;
+    top: -60px;
+    left: 0;
+    width: 100%;
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 0.5rem;
-    pointer-events: none;
-}
-
-.score {
-    font-size: 1.2rem;
-    color: var(--primary);
-    text-shadow: 0 0 5px var(--primary);
-}
-
-.touch-controls {
-    position: fixed;
-    bottom: 2rem;
-    left: 50%;
-    transform: translateX(-50%);
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 0.5rem;
     padding: 1rem;
 }
 
-.touch-btn {
-    width: 60px;
-    height: 60px;
-    border: 2px solid var(--primary);
-    background: rgba(0, 255, 0, 0.1);
+.score {
+    font-size: 1.8rem;
     color: var(--primary);
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 1.5rem;
-    cursor: pointer;
-    transition: all 0.2s ease;
-    -webkit-tap-highlight-color: transparent;
+    text-shadow: 0 0 10px var(--primary);
 }
 
-.touch-btn:active,
-.touch-btn.pressed {
+.touch-controls {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 0.5rem;
+    margin-top: 2rem;
+    max-width: 300px;
+    width: 100%;
+}
+
+.touch-btn {
+    aspect-ratio: 1;
+    border: 2px solid var(--primary);
+    background: rgba(0, 255, 170, 0.1);
+    color: var(--primary);
+    font-size: 1.5rem;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.touch-btn:active {
     background: var(--primary);
     color: var(--background);
 }
@@ -154,102 +184,180 @@ canvas {
 .touch-btn.right { grid-column: 3; grid-row: 2; }
 .touch-btn.down { grid-column: 2; grid-row: 3; }
 
-@media (min-width: 768px) {
-    .touch-controls {
-        display: none;
-    }
-}
-
-/* Animations */
-@keyframes pulse {
-    0% {
-        transform: scale(1);
-        opacity: 1;
-    }
-    50% {
-        transform: scale(1.1);
-        opacity: 0.8;
-    }
-    100% {
-        transform: scale(1);
-        opacity: 1;
-    }
-}
-
-/* Game Effects */
-.food-particle {
+.modal {
+    display: none;
     position: fixed;
-    pointer-events: none;
-    width: 4px;
-    height: 4px;
-    background: var(--accent);
-    border-radius: 50%;
-    z-index: 100;
-    will-change: transform, opacity;
-    transform: translateZ(0);
-    backface-visibility: hidden;
-    perspective: 1000;
-    -webkit-font-smoothing: antialiased;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(10, 10, 42, 0.9);
+    z-index: 1000;
+    align-items: center;
+    justify-content: center;
 }
 
-@keyframes particle-explosion {
-    0% {
-        transform: translate3d(0, 0, 0) scale3d(1, 1, 1);
-        opacity: 1;
-    }
-    100% {
-        transform: translate3d(var(--x), var(--y), 0) scale3d(0, 0, 1);
+.modal.active {
+    display: flex;
+    animation: modalFadeIn 0.3s ease-out;
+}
+
+@keyframes modalFadeIn {
+    from {
         opacity: 0;
+        transform: scale(0.9);
+    }
+    to {
+        opacity: 1;
+        transform: scale(1);
     }
 }
 
-/* Celebration Effects */
-.celebration-particle {
-    position: fixed;
-    width: 8px;
-    height: 8px;
+.modal-content {
+    background: var(--background);
+    padding: 2rem;
+    border-radius: 16px;
+    border: 3px solid var(--primary);
+    text-align: center;
+    min-width: 300px;
+    box-shadow: 0 0 40px rgba(0, 255, 170, 0.3);
+}
+
+.modal-content h2 {
+    color: var(--primary);
+    font-size: 2rem;
+    margin-bottom: 1rem;
+}
+
+.modal-content p {
+    font-size: 1.2rem;
+    margin-bottom: 2rem;
+}
+
+@media (max-width: 768px) {
+    h1 { font-size: 3rem; }
+    .game-btn { font-size: 1.2rem; min-width: 140px; }
+    .touch-controls { margin-top: 1rem; }
+}
+
+/* Shop Styles */
+.coins {
+    font-size: 1.5rem;
+    color: var(--primary);
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-top: 1rem;
+}
+
+.coin-icon {
+    font-size: 2rem;
+    animation: spin 4s linear infinite;
+}
+
+@keyframes spin {
+    from { transform: rotateY(0deg); }
+    to { transform: rotateY(360deg); }
+}
+
+.shop-balance {
+    font-size: 1.5rem;
+    color: var(--primary);
+    margin-bottom: 2rem;
+    text-shadow: 0 0 10px var(--primary);
+}
+
+.shop-items {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 2rem;
+    margin-bottom: 2rem;
+}
+
+.shop-item {
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 12px;
+    padding: 1.5rem;
+    text-align: center;
+    border: 2px solid var(--primary);
+    transition: all 0.3s ease;
+}
+
+.shop-item:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 5px 20px rgba(0, 255, 170, 0.3);
+}
+
+.item-preview {
+    width: 100px;
+    height: 100px;
+    margin: 0 auto 1rem;
     border-radius: 50%;
+    background: var(--primary);
+}
+
+.snake-skin-classic {
+    background: linear-gradient(45deg, var(--snake) 0%, var(--primary) 100%);
+}
+
+.snake-skin-neon {
+    background: linear-gradient(45deg, #ff00ff 0%, #00ffff 100%);
+    box-shadow: 0 0 20px rgba(255, 0, 255, 0.5);
+}
+
+.snake-skin-galaxy {
+    background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='100' height='100'%3E%3Cdefs%3E%3CradialGradient id='a' cx='50%25' cy='50%25' r='50%25'%3E%3Cstop offset='0%25' stop-color='%23fff'/%3E%3Cstop offset='100%25' stop-color='%23000'/%3E%3C/radialGradient%3E%3C/defs%3E%3Crect width='100' height='100' fill='url(%23a)'/%3E%3C/svg%3E"),
+                linear-gradient(45deg, #6600ff 0%, #ff00ff 50%, #00ffff 100%);
+    box-shadow: 0 0 30px rgba(102, 0, 255, 0.5);
+}
+
+.shop-item h3 {
+    color: var(--primary);
+    font-size: 1.2rem;
+    margin-bottom: 0.5rem;
+}
+
+.shop-item p {
+    color: var(--text);
+    margin-bottom: 1rem;
+    opacity: 0.8;
+}
+
+.shop-btn {
+    width: 100%;
+    min-width: 0;
+    padding: 0.5rem;
+    font-size: 1rem;
+}
+
+.shop-btn[data-owned="true"] {
+    border-color: var(--secondary);
+    color: var(--secondary);
+}
+
+.shop-btn[data-owned="true"]::before {
+    background: var(--secondary);
+}
+
+/* Particle Effects */
+.particle {
+    position: fixed;
     pointer-events: none;
     z-index: 1000;
-    filter: blur(2px);
-    animation: explode 1s ease-out forwards;
-    will-change: transform, opacity;
-    transform: translateZ(0);
+    animation: float-up 1s ease-out forwards;
 }
 
-.celebration-star {
-    position: fixed;
-    font-size: 24px;
-    pointer-events: none;
-    z-index: 1000;
-    animation: float-celebrate 1.5s ease-out forwards;
-    text-shadow: 0 0 10px currentColor;
-    will-change: transform, opacity;
-    transform: translateZ(0);
-}
-
-@keyframes explode {
+@keyframes float-up {
     0% {
-        transform: scale3d(0, 0, 1) translate3d(0, 0, 0);
+        transform: translateY(0) scale(1);
         opacity: 1;
     }
     100% {
-        transform: scale3d(1, 1, 1) translate3d(var(--x), var(--y), 0);
+        transform: translateY(-50px) scale(0);
         opacity: 0;
     }
 }
 
-@keyframes float-celebrate {
-    0% {
-        transform: translate3d(0, 0, 0) scale3d(0.5, 0.5, 1);
-        opacity: 0;
-    }
-    20% {
-        transform: translate3d(0, -20px, 0) scale3d(1, 1, 1);
-        opacity: 1;
-    }
-    100% {
-        transform: translate3d(0, -100px, 0) scale3d(0, 0, 1);
-        opacity: 0;
-    }
+@media (min-width: 769px) {
+    .touch-controls { display: none; }
 }

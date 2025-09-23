@@ -3,58 +3,427 @@ const GAME_CONFIG = {
     canvasSize: 400,
     gridSize: 20,
     initialSpeed: 200,
-    speedIncrease: 5,
-    snakeMovementSmoothing: 0.15
+    speedIncrease: 2,
+    snakeMovementSmoothing: 0.15,
+    maxSpeed: 80,
+    colors: {
+        snake: "#00ffaa",
+        food: "#ff3366",
+        grid: "#1a1a4a",
+        powerup: "#ff00ff"
+    },
+    powerUpDuration: 5000,
+    powerUpSpawnChance: 0.1
 };
 
 // Game State
 const gameState = {
     snake: [],
     food: { x: 0, y: 0 },
+    powerUp: null,
     direction: { x: 1, y: 0 },
     nextDirection: { x: 1, y: 0 },
     score: 0,
+    coins: parseInt(localStorage.getItem("coins")) || 0,
+    highScore: parseInt(localStorage.getItem("highScore")) || 0,
     speed: GAME_CONFIG.initialSpeed,
     lastUpdate: 0,
     frameId: null,
     isGameOver: false,
     isPaused: false,
-    snakePositions: []
+    snakePositions: [],
+    powerUpActive: false,
+    powerUpTimer: null,
+    lastInputTime: 0,
+    inputDelay: 50,
+    currentSkin: localStorage.getItem("currentSkin") || "classic",
+    ownedSkins: new Set(JSON.parse(localStorage.getItem("ownedSkins")) || ["classic"])
 };
 
 // DOM Elements
-const canvas = document.getElementById('gameCanvas');
-const ctx = canvas.getContext('2d');
-canvas.width = GAME_CONFIG.canvasSize;
-canvas.height = GAME_CONFIG.canvasSize;
+const canvas = document.getElementById("gameCanvas");
+const ctx = canvas.getContext("2d");
+const scoreElement = document.getElementById("score");
+const finalScoreElement = document.getElementById("finalScore");
+const gameOverModal = document.getElementById("gameOverModal");
+const mainMenuBtn = document.getElementById("menu-btn");
+const playBtn = document.getElementById("play-btn");
+const backBtn = document.getElementById("back-btn");
+const restartBtn = document.getElementById("restart-btn");
+const mainMenu = document.getElementById("main-menu");
+const game = document.getElementById("game");
 
-// Game Initialization
-function initializeGame() {
-    // Reset game state
+// Initialize canvas with proper pixel ratio
+function initCanvas() {
+    const pixelRatio = window.devicePixelRatio || 1;
+    canvas.width = GAME_CONFIG.canvasSize * pixelRatio;
+    canvas.height = GAME_CONFIG.canvasSize * pixelRatio;
+    canvas.style.width = `${GAME_CONFIG.canvasSize}px`;
+    canvas.style.height = `${GAME_CONFIG.canvasSize}px`;
+    ctx.scale(pixelRatio, pixelRatio);
+}
+
+// Event Listeners
+document.addEventListener("keydown", handleKeyPress);
+document.querySelectorAll(".touch-btn").forEach(btn => {
+    btn.addEventListener("touchstart", handleTouchControl);
+    btn.addEventListener("mousedown", handleTouchControl);
+});
+
+playBtn.addEventListener("click", startGame);
+backBtn.addEventListener("click", goToMainMenu);
+restartBtn.addEventListener("click", startGame);
+mainMenuBtn.addEventListener("click", goToMainMenu);
+
+// Navigation Functions
+function goToMainMenu() {
+    mainMenu.classList.add("active");
+    game.classList.remove("active");
+    gameOverModal.classList.remove("active");
+    cancelAnimationFrame(gameState.frameId);
+    resetGame();
+}
+
+function showGame() {
+    mainMenu.classList.remove("active");
+    game.classList.add("active");
+}
+
+// Game Control Functions
+function handleKeyPress(event) {
+    if (gameState.isGameOver) return;
+    
+    const now = performance.now();
+    if (now - gameState.lastInputTime < gameState.inputDelay) return;
+    
+    const key = event.key.toLowerCase();
+    const currentDirection = gameState.direction;
+    
+    switch (key) {
+        case "arrowup":
+        case "w":
+            if (currentDirection.y !== 1) {
+                gameState.nextDirection = { x: 0, y: -1 };
+            }
+            break;
+        case "arrowdown":
+        case "s":
+            if (currentDirection.y !== -1) {
+                gameState.nextDirection = { x: 0, y: 1 };
+            }
+            break;
+        case "arrowleft":
+        case "a":
+            if (currentDirection.x !== 1) {
+                gameState.nextDirection = { x: -1, y: 0 };
+            }
+            break;
+        case "arrowright":
+        case "d":
+            if (currentDirection.x !== -1) {
+                gameState.nextDirection = { x: 1, y: 0 };
+            }
+            break;
+        case " ":
+        case "p":
+            togglePause();
+            break;
+    }
+    
+    gameState.lastInputTime = now;
+}
+
+function handleTouchControl(event) {
+    event.preventDefault();
+    if (gameState.isGameOver) return;
+    
+    const now = performance.now();
+    if (now - gameState.lastInputTime < gameState.inputDelay) return;
+    
+    const direction = event.target.dataset.direction;
+    const currentDirection = gameState.direction;
+    
+    switch (direction) {
+        case "up":
+            if (currentDirection.y !== 1) {
+                gameState.nextDirection = { x: 0, y: -1 };
+            }
+            break;
+        case "down":
+            if (currentDirection.y !== -1) {
+                gameState.nextDirection = { x: 0, y: 1 };
+            }
+            break;
+        case "left":
+            if (currentDirection.x !== 1) {
+                gameState.nextDirection = { x: -1, y: 0 };
+            }
+            break;
+        case "right":
+            if (currentDirection.x !== -1) {
+                gameState.nextDirection = { x: 1, y: 0 };
+            }
+            break;
+    }
+    
+    gameState.lastInputTime = now;
+}
+
+function togglePause() {
+    gameState.isPaused = !gameState.isPaused;
+    if (!gameState.isPaused) {
+        gameLoop(performance.now());
+    }
+}
+
+// Game Logic Functions
+function generateFoodPosition() {
+    let position;
+    do {
+        position = {
+            x: Math.floor(Math.random() * GAME_CONFIG.gridSize),
+            y: Math.floor(Math.random() * GAME_CONFIG.gridSize)
+        };
+    } while (isPositionOccupied(position));
+    return position;
+}
+
+function generatePowerUpPosition() {
+    let position;
+    do {
+        position = {
+            x: Math.floor(Math.random() * GAME_CONFIG.gridSize),
+            y: Math.floor(Math.random() * GAME_CONFIG.gridSize)
+        };
+    } while (isPositionOccupied(position) || 
+             (position.x === gameState.food.x && position.y === gameState.food.y));
+    return position;
+}
+
+function isPositionOccupied(position) {
+    return gameState.snake.some(segment => 
+        segment.x === position.x && segment.y === position.y
+    );
+}
+
+function isSelfCollision(head) {
+    return gameState.snake.slice(1).some(segment => 
+        segment.x === head.x && segment.y === head.y
+    );
+}
+
+function activatePowerUp() {
+    gameState.powerUpActive = true;
+    if (gameState.powerUpTimer) {
+        clearTimeout(gameState.powerUpTimer);
+    }
+    gameState.powerUpTimer = setTimeout(() => {
+        gameState.powerUpActive = false;
+    }, GAME_CONFIG.powerUpDuration);
+}
+
+// Rendering Functions
+function render() {
+    // Clear canvas
+    ctx.fillStyle = getComputedStyle(document.body).getPropertyValue("--background");
+    ctx.fillRect(0, 0, GAME_CONFIG.canvasSize, GAME_CONFIG.canvasSize);
+    
+    // Draw grid
+    const cellSize = GAME_CONFIG.canvasSize / GAME_CONFIG.gridSize;
+    ctx.strokeStyle = GAME_CONFIG.colors.grid;
+    ctx.lineWidth = 0.5;
+    
+    for (let i = 0; i <= GAME_CONFIG.gridSize; i++) {
+        const pos = i * cellSize;
+        ctx.beginPath();
+        ctx.moveTo(pos, 0);
+        ctx.lineTo(pos, GAME_CONFIG.canvasSize);
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.moveTo(0, pos);
+        ctx.lineTo(GAME_CONFIG.canvasSize, pos);
+        ctx.stroke();
+    }
+    
+    // Draw food
+    ctx.fillStyle = GAME_CONFIG.colors.food;
+    drawCircle(gameState.food.x * cellSize + cellSize/2, 
+               gameState.food.y * cellSize + cellSize/2, 
+               cellSize/3);
+    
+    // Draw power-up if exists
+    if (gameState.powerUp) {
+        ctx.fillStyle = GAME_CONFIG.colors.powerup;
+        const time = performance.now() / 500; // Oscillation speed
+        const scale = 0.8 + Math.sin(time) * 0.2; // Pulsing effect
+        drawStar(gameState.powerUp.x * cellSize + cellSize/2,
+                gameState.powerUp.y * cellSize + cellSize/2,
+                5, cellSize/4 * scale, cellSize/8 * scale);
+    }
+    
+    // Draw snake with current skin
+    let snakeColor;
+    switch (gameState.currentSkin) {
+        case "neon":
+            const hue = (performance.now() / 50) % 360;
+            snakeColor = `hsl(${hue}, 100%, 50%)`;
+            break;
+        case "galaxy":
+            const time = performance.now() / 1000;
+            const r = Math.sin(time) * 127 + 128;
+            const g = Math.sin(time + 2) * 127 + 128;
+            const b = Math.sin(time + 4) * 127 + 128;
+            snakeColor = `rgb(${r}, ${g}, ${b})`;
+            break;
+        default:
+            snakeColor = gameState.powerUpActive ? GAME_CONFIG.colors.powerup : GAME_CONFIG.colors.snake;
+    }
+    ctx.fillStyle = snakeColor;
+    gameState.snake.forEach((segment, index) => {
+        if (index === 0) {
+            // Draw head
+            drawSnakeHead(segment, cellSize);
+        } else {
+            // Draw body with rounded corners
+            const x = segment.x * cellSize;
+            const y = segment.y * cellSize;
+            ctx.beginPath();
+            ctx.roundRect(x + 1, y + 1, cellSize - 2, cellSize - 2, 4);
+            ctx.fill();
+        }
+    });
+
+    // Draw glow effect when power-up is active
+    if (gameState.powerUpActive) {
+        ctx.save();
+        ctx.globalAlpha = 0.2;
+        ctx.shadowColor = GAME_CONFIG.colors.powerup;
+        ctx.shadowBlur = 20;
+        gameState.snake.forEach(segment => {
+            const x = segment.x * cellSize;
+            const y = segment.y * cellSize;
+            ctx.beginPath();
+            ctx.roundRect(x + 1, y + 1, cellSize - 2, cellSize - 2, 4);
+            ctx.fill();
+        });
+        ctx.restore();
+    }
+}
+
+function drawCircle(x, y, radius) {
+    ctx.beginPath();
+    ctx.arc(x, y, radius, 0, Math.PI * 2);
+    ctx.fill();
+}
+
+function drawSnakeHead(segment, cellSize) {
+    const x = segment.x * cellSize;
+    const y = segment.y * cellSize;
+    
+    // Draw head body
+    ctx.beginPath();
+    ctx.roundRect(x + 1, y + 1, cellSize - 2, cellSize - 2, 4);
+    ctx.fill();
+    
+    // Draw eyes
+    ctx.fillStyle = "#000";
+    const eyeSize = cellSize / 6;
+    const eyeOffset = cellSize / 4;
+    
+    if (gameState.direction.x === 1) {
+        drawCircle(x + cellSize - eyeOffset, y + eyeOffset, eyeSize);
+        drawCircle(x + cellSize - eyeOffset, y + cellSize - eyeOffset, eyeSize);
+    } else if (gameState.direction.x === -1) {
+        drawCircle(x + eyeOffset, y + eyeOffset, eyeSize);
+        drawCircle(x + eyeOffset, y + cellSize - eyeOffset, eyeSize);
+    } else if (gameState.direction.y === 1) {
+        drawCircle(x + eyeOffset, y + cellSize - eyeOffset, eyeSize);
+        drawCircle(x + cellSize - eyeOffset, y + cellSize - eyeOffset, eyeSize);
+    } else {
+        drawCircle(x + eyeOffset, y + eyeOffset, eyeSize);
+        drawCircle(x + cellSize - eyeOffset, y + eyeOffset, eyeSize);
+    }
+}
+
+function drawStar(cx, cy, spikes, outerRadius, innerRadius) {
+    let rot = Math.PI / 2 * 3;
+    let x = cx;
+    let y = cy;
+    const step = Math.PI / spikes;
+
+    ctx.beginPath();
+    ctx.moveTo(cx, cy - outerRadius);
+    
+    for (let i = 0; i < spikes; i++) {
+        x = cx + Math.cos(rot) * outerRadius;
+        y = cy + Math.sin(rot) * outerRadius;
+        ctx.lineTo(x, y);
+        rot += step;
+
+        x = cx + Math.cos(rot) * innerRadius;
+        y = cy + Math.sin(rot) * innerRadius;
+        ctx.lineTo(x, y);
+        rot += step;
+    }
+    
+    ctx.lineTo(cx, cy - outerRadius);
+    ctx.closePath();
+    ctx.fill();
+}
+
+// Game State Management
+function updateScoreDisplay() {
+    scoreElement.textContent = gameState.score;
+}
+
+function resetGame() {
     gameState.snake = [{ x: 5, y: 5 }];
     gameState.food = generateFoodPosition();
+    gameState.powerUp = null;
     gameState.direction = { x: 1, y: 0 };
     gameState.nextDirection = { x: 1, y: 0 };
     gameState.score = 0;
     gameState.speed = GAME_CONFIG.initialSpeed;
     gameState.isGameOver = false;
     gameState.isPaused = false;
-    gameState.snakePositions = [];
-    
-    // Update score display
+    gameState.powerUpActive = false;
+    if (gameState.powerUpTimer) {
+        clearTimeout(gameState.powerUpTimer);
+    }
     updateScoreDisplay();
-    
-    // Start game loop
+}
+
+function startGame() {
+    showGame();
+    resetGame();
+    gameOverModal.classList.remove("active");
     gameState.lastUpdate = performance.now();
     gameLoop(gameState.lastUpdate);
 }
 
-// Frame timing variables
+function endGame() {
+    gameState.isGameOver = true;
+    if (gameState.score > gameState.highScore) {
+        gameState.highScore = gameState.score;
+        localStorage.setItem("highScore", gameState.score);
+        finalScoreElement.textContent = `New High Score: ${gameState.score}!`;
+    } else {
+        finalScoreElement.textContent = `Final Score: ${gameState.score}`;
+    }
+    gameOverModal.classList.add("active");
+}
+
+// Game Loop
 const FRAME_MIN_TIME = (1000/60) - (1000/65); // 60fps with tolerance
 let lastFrameTime = 0;
 
 function gameLoop(timestamp) {
-    if (gameState.isGameOver || gameState.isPaused) {
+    if (gameState.isGameOver) {
+        return;
+    }
+
+    if (gameState.isPaused) {
+        gameState.frameId = requestAnimationFrame(gameLoop);
         return;
     }
 
@@ -66,319 +435,153 @@ function gameLoop(timestamp) {
     }
     lastFrameTime = timestamp;
 
-    // Use double buffering for smoother updates
-    const currentState = {
-        direction: { ...gameState.nextDirection },
-        snake: gameState.snake.map(segment => ({ ...segment })),
-        food: { ...gameState.food }
-    };
-
     // Update game state at fixed time intervals
     if (timestamp - gameState.lastUpdate >= gameState.speed) {
-        // Calculate new head position
         const head = {
-            x: currentState.snake[0].x + currentState.direction.x,
-            y: currentState.snake[0].y + currentState.direction.y
+            x: gameState.snake[0].x + gameState.nextDirection.x,
+            y: gameState.snake[0].y + gameState.nextDirection.y
         };
 
-        // Check for collisions
-        if (isCollision(head)) {
+        // Wrap around screen edges
+        head.x = (head.x + GAME_CONFIG.gridSize) % GAME_CONFIG.gridSize;
+        head.y = (head.y + GAME_CONFIG.gridSize) % GAME_CONFIG.gridSize;
+
+        // Check for collisions with self
+        if (isSelfCollision(head)) {
             endGame();
             return;
         }
 
-        // Update snake positions array for interpolation only when needed
-        if (gameState.direction.x !== currentState.direction.x || 
-            gameState.direction.y !== currentState.direction.y) {
-            gameState.snakePositions = currentState.snake;
-        }
-
         // Move snake
         gameState.snake.unshift(head);
+        gameState.direction = { ...gameState.nextDirection };
         
-        // Check for food collision
+        // Check for collisions with food and power-ups
         if (head.x === gameState.food.x && head.y === gameState.food.y) {
-            // Increase score and speed
-            gameState.score++;
-            gameState.speed = Math.max(50, GAME_CONFIG.initialSpeed - (gameState.score * GAME_CONFIG.speedIncrease));
-            updateScoreDisplay();
+            // Add points and coins
+            addReward(10);
             
-            // Generate new food
+            // Update high score
+            if (gameState.score > gameState.highScore) {
+                gameState.highScore = gameState.score;
+                localStorage.setItem("highScore", gameState.highScore);
+            }
+            
+            // Generate new food and possibly powerup
             gameState.food = generateFoodPosition();
+            if (!gameState.powerUp && Math.random() < GAME_CONFIG.powerUpSpawnChance) {
+                gameState.powerUp = generatePowerUpPosition();
+            }
             
-            // Create food collection effect
-            createFoodEffect(head.x * GAME_CONFIG.gridSize + GAME_CONFIG.gridSize / 2, 
-                           head.y * GAME_CONFIG.gridSize + GAME_CONFIG.gridSize / 2);
+            // Increase speed
+            if (gameState.speed > GAME_CONFIG.maxSpeed) {
+                gameState.speed -= GAME_CONFIG.speedIncrease;
+            }
+        } else if (gameState.powerUp && head.x === gameState.powerUp.x && head.y === gameState.powerUp.y) {
+            // Activate power-up
+            activatePowerUp();
+            gameState.powerUp = null;
         } else {
             gameState.snake.pop();
         }
-
-        // Update game state
-        gameState.direction = { ...gameState.nextDirection };
+        
         gameState.lastUpdate = timestamp;
     }
 
-    // Draw game state
-    draw(timestamp);
-    
-    // Request next frame
+    render();
     gameState.frameId = requestAnimationFrame(gameLoop);
 }
 
-function draw(timestamp) {
-    ctx.clearRect(0, 0, GAME_CONFIG.canvasSize, GAME_CONFIG.canvasSize);
+// Shop Functions
+function updateCoinsDisplay() {
+    document.getElementById("coin-amount").textContent = gameState.coins;
+    document.getElementById("shop-coins").textContent = gameState.coins;
+}
 
-    // Calculate interpolation factor
-    const timeSinceUpdate = timestamp - gameState.lastUpdate;
-    const interpolationFactor = Math.min(
-        timeSinceUpdate / gameState.speed, 
-        1
-    );
+function buyItem(itemName, price) {
+    if (gameState.coins >= price && !gameState.ownedSkins.has(itemName)) {
+        gameState.coins -= price;
+        gameState.ownedSkins.add(itemName);
+        localStorage.setItem("coins", gameState.coins);
+        localStorage.setItem("ownedSkins", JSON.stringify([...gameState.ownedSkins]));
+        updateCoinsDisplay();
+        updateShopButtons();
+        createParticles("🪙", 5);
+    }
+}
 
-    // Draw snake with smooth interpolation
-    gameState.snake.forEach((segment, index) => {
-        let renderX = segment.x;
-        let renderY = segment.y;
+function equipSkin(skinName) {
+    if (gameState.ownedSkins.has(skinName)) {
+        gameState.currentSkin = skinName;
+        localStorage.setItem("currentSkin", skinName);
+        updateShopButtons();
+    }
+}
 
-        // Interpolate position for smooth movement
-        if (index < gameState.snakePositions.length && interpolationFactor < 1) {
-            const previousPos = gameState.snakePositions[index];
-            const dx = segment.x - previousPos.x;
-            const dy = segment.y - previousPos.y;
-            renderX = previousPos.x + dx * interpolationFactor;
-            renderY = previousPos.y + dy * interpolationFactor;
-        }
-
-        const x = renderX * GAME_CONFIG.gridSize;
-        const y = renderY * GAME_CONFIG.gridSize;
-
-        if (index === 0) {
-            // Draw head
-            ctx.save();
-            ctx.font = `${GAME_CONFIG.gridSize}px sans-serif`;
-            ctx.textAlign = 'center';
-            ctx.textBaseline = 'middle';
-            ctx.shadowColor = 'var(--primary)';
-            ctx.shadowBlur = 10;
-            ctx.fillText('🟢', x + GAME_CONFIG.gridSize / 2, y + GAME_CONFIG.gridSize / 2);
-            ctx.restore();
+function updateShopButtons() {
+    document.querySelectorAll(".shop-btn").forEach(btn => {
+        const item = btn.dataset.item;
+        if (gameState.ownedSkins.has(item)) {
+            btn.textContent = item === gameState.currentSkin ? "Equipped" : "Equip";
+            btn.dataset.owned = "true";
+            btn.onclick = () => equipSkin(item);
         } else {
-            // Draw body segment
-            ctx.save();
-            ctx.shadowColor = 'var(--primary)';
-            ctx.shadowBlur = 10;
-            ctx.fillStyle = 'var(--primary)';
-            ctx.fillRect(x + 2, y + 2, GAME_CONFIG.gridSize - 4, GAME_CONFIG.gridSize - 4);
-            ctx.restore();
+            btn.textContent = "Buy";
+            btn.dataset.owned = "false";
+            const price = parseInt(btn.dataset.price);
+            btn.onclick = () => buyItem(item, price);
         }
     });
-
-    // Draw food
-    ctx.save();
-    ctx.font = `${GAME_CONFIG.gridSize}px sans-serif`;
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.shadowColor = 'var(--accent)';
-    ctx.shadowBlur = 10;
-    ctx.fillText('⭐', 
-        gameState.food.x * GAME_CONFIG.gridSize + GAME_CONFIG.gridSize / 2,
-        gameState.food.y * GAME_CONFIG.gridSize + GAME_CONFIG.gridSize / 2
-    );
-    ctx.restore();
 }
 
-function createFoodEffect(x, y) {
-    for (let i = 0; i < 8; i++) {
-        const particle = document.createElement('div');
-        particle.className = 'food-particle';
-        particle.style.left = `${x}px`;
-        particle.style.top = `${y}px`;
-        
-        const angle = (Math.PI * 2 * i) / 8;
-        const distance = 40;
-        particle.style.setProperty('--x', `${Math.cos(angle) * distance}px`);
-        particle.style.setProperty('--y', `${Math.sin(angle) * distance}px`);
-        
+function createParticles(emoji, count) {
+    for (let i = 0; i < count; i++) {
+        const particle = document.createElement("div");
+        particle.className = "particle";
+        particle.textContent = emoji;
+        particle.style.left = `${Math.random() * 100}%`;
         document.body.appendChild(particle);
-        particle.style.animation = 'particle-explosion 0.6s ease-out forwards';
-        
-        setTimeout(() => particle.remove(), 600);
+        setTimeout(() => particle.remove(), 1000);
     }
 }
 
-function generateFoodPosition() {
-    const position = {
-        x: Math.floor(Math.random() * (GAME_CONFIG.canvasSize / GAME_CONFIG.gridSize)),
-        y: Math.floor(Math.random() * (GAME_CONFIG.canvasSize / GAME_CONFIG.gridSize))
-    };
-    
-    // Regenerate if food spawns on snake
-    return isOnSnake(position) ? generateFoodPosition() : position;
-}
+// Event Listeners for Shop and High Scores
+document.getElementById("shop-btn").addEventListener("click", () => {
+    document.getElementById("shopModal").classList.add("active");
+    updateShopButtons();
+});
 
-function isCollision(position) {
-    // Check wall collision
-    if (position.x < 0 || 
-        position.y < 0 || 
-        position.x >= GAME_CONFIG.canvasSize / GAME_CONFIG.gridSize || 
-        position.y >= GAME_CONFIG.canvasSize / GAME_CONFIG.gridSize) {
-        return true;
+document.getElementById("close-shop-btn").addEventListener("click", () => {
+    document.getElementById("shopModal").classList.remove("active");
+});
+
+document.getElementById("high-scores-btn").addEventListener("click", () => {
+    document.getElementById("highScore").textContent = gameState.highScore;
+    document.getElementById("highScoresModal").classList.add("active");
+});
+
+document.getElementById("close-scores-btn").addEventListener("click", () => {
+    document.getElementById("highScoresModal").classList.remove("active");
+});
+
+// Update reward system
+function addReward(basePoints) {
+    const points = gameState.powerUpActive ? basePoints * 2 : basePoints;
+    gameState.score += points;
+    
+    // Add coins based on points
+    const coinsEarned = Math.floor(points / 10);
+    if (coinsEarned > 0) {
+        gameState.coins += coinsEarned;
+        localStorage.setItem("coins", gameState.coins);
+        updateCoinsDisplay();
+        createParticles("🪙", 1);
     }
     
-    // Check self collision
-    return isOnSnake(position);
+    updateScoreDisplay();
 }
 
-function isOnSnake(position) {
-    return gameState.snake.some(segment => segment.x === position.x && segment.y === position.y);
-}
-
-function updateScoreDisplay() {
-    document.getElementById('score').textContent = `Score: ${gameState.score}`;
-}
-
-function endGame() {
-    gameState.isGameOver = true;
-    cancelAnimationFrame(gameState.frameId);
-    
-    // Update final score in game over modal
-    document.getElementById('finalScore').textContent = `Final Score: ${gameState.score}`;
-    
-    // Show game over modal
-    document.getElementById('gameOverModal').style.display = 'flex';
-}
-
-function handleDirectionInput(direction) {
-    const directions = {
-        'up': { x: 0, y: -1 },
-        'down': { x: 0, y: 1 },
-        'left': { x: -1, y: 0 },
-        'right': { x: 1, y: 0 }
-    };
-    
-    const newDirection = directions[direction];
-    if (!newDirection) return;
-
-    // Prevent 180-degree turns
-    if ((gameState.direction.x !== -newDirection.x || gameState.direction.x === 0) &&
-        (gameState.direction.y !== -newDirection.y || gameState.direction.y === 0)) {
-        gameState.nextDirection = newDirection;
-    }
-}
-
-// Event Listeners
-document.addEventListener('keydown', (e) => {
-    const keys = {
-        'ArrowUp': 'up',
-        'ArrowDown': 'down',
-        'ArrowLeft': 'left',
-        'ArrowRight': 'right',
-        'w': 'up',
-        's': 'down',
-        'a': 'left',
-        'd': 'right'
-    };
-    
-    const direction = keys[e.key];
-    if (direction) {
-        e.preventDefault();
-        handleDirectionInput(direction);
-    }
-});
-
-// Touch Controls
-function initializeTouchControls() {
-    const controlsContainer = document.querySelector('.touch-controls');
-    if (!controlsContainer) return;
-
-    // Handle touch input with pointer events
-    let pointerStartX = 0;
-    let pointerStartY = 0;
-    let lastMoveTime = 0;
-    const MOVE_THROTTLE = 16; // ~60fps
-    
-    // Use pointer events for better performance and device compatibility
-    canvas.addEventListener('pointerdown', (e) => {
-        pointerStartX = e.clientX;
-        pointerStartY = e.clientY;
-        canvas.setPointerCapture(e.pointerId);
-    }, { passive: true });
-    
-    canvas.addEventListener('pointermove', (e) => {
-        const now = performance.now();
-        if (now - lastMoveTime < MOVE_THROTTLE) return;
-        lastMoveTime = now;
-        
-        if (!pointerStartX && !pointerStartY) return;
-        
-        const deltaX = e.clientX - pointerStartX;
-        const deltaY = e.clientY - pointerStartY;
-        const minSwipeDistance = 30;
-        
-        if (Math.abs(deltaX) > minSwipeDistance || Math.abs(deltaY) > minSwipeDistance) {
-            if (Math.abs(deltaX) > Math.abs(deltaY)) {
-                handleDirectionInput(deltaX > 0 ? 'right' : 'left');
-                pointerStartX = e.clientX;
-                pointerStartY = e.clientY;
-            } else {
-                handleDirectionInput(deltaY > 0 ? 'down' : 'up');
-                pointerStartX = e.clientX;
-                pointerStartY = e.clientY;
-            }
-        }
-    }, { passive: true });
-    
-    canvas.addEventListener('pointerup', () => {
-        pointerStartX = 0;
-        pointerStartY = 0;
-    }, { passive: true });
-
-    // Handle on-screen control buttons
-    document.querySelectorAll('.touch-btn').forEach(btn => {
-        btn.addEventListener('pointerdown', function(e) {
-            e.preventDefault();
-            const direction = this.dataset.direction;
-            handleDirectionInput(direction);
-            this.classList.add('pressed');
-        });
-
-        btn.addEventListener('pointerup', function() {
-            this.classList.remove('pressed');
-        });
-
-        btn.addEventListener('pointerout', function() {
-            this.classList.remove('pressed');
-        });
-    });
-}
-
-// Initialize game when play button is clicked
-document.getElementById('play-btn').addEventListener('click', function() {
-    document.getElementById('main-menu').classList.remove('active');
-    document.getElementById('game').classList.add('active');
-    initializeGame();
-});
-
-// Initialize touch controls
-initializeTouchControls();
-
-// Game over modal buttons
-document.getElementById('restart-btn').addEventListener('click', function() {
-    document.getElementById('gameOverModal').style.display = 'none';
-    document.getElementById('game').classList.add('active');
-    initializeGame();
-});
-
-document.getElementById('menu-btn').addEventListener('click', function() {
-    document.getElementById('gameOverModal').style.display = 'none';
-    document.getElementById('game').classList.remove('active');
-    document.getElementById('main-menu').classList.add('active');
-});
-
-// Back button handler
-document.getElementById('back-btn').addEventListener('click', function() {
-    cancelAnimationFrame(gameState.frameId);
-    gameState.isPaused = true;
-    document.getElementById('game').classList.remove('active');
-    document.getElementById('main-menu').classList.add('active');
-});
+// Initialize game
+initCanvas();
+updateCoinsDisplay();
+updateShopButtons();

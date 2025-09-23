@@ -6,14 +6,20 @@
     <title>Galactic Snake</title>
     <link rel="shortcut icon" href="favicon.ico" type="image/x-icon">
     <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="style.css">
 </head>
 <body>
     <div id="main-menu" class="page active">
         <div class="page-container">
             <h1>Galactic Snake</h1>
             <div class="button-group">
-                <button id="play-btn" class="game-btn">Play</button>
+                <button id="play-btn" class="game-btn">New Game</button>
+                <button id="shop-btn" class="game-btn">Shop</button>
+                <button id="high-scores-btn" class="game-btn">High Scores</button>
+            </div>
+            <div class="coins">
+                <span class="coin-icon">🪙</span>
+                <span id="coin-amount">0</span>
             </div>
         </div>
     </div>
@@ -24,7 +30,7 @@
                 <canvas id="gameCanvas"></canvas>
                 <div class="game-ui">
                     <div class="score">Score: <span id="score">0</span></div>
-                    <button id="back-btn" class="game-btn">Back</button>
+                    <button id="back-btn" class="game-btn">Menu</button>
                 </div>
             </div>
             <div class="touch-controls">
@@ -36,38 +42,56 @@
         </div>
     </div>
 
-    <!-- Payment Processing Modal -->
-    <div id="processingModal" class="modal">
-        <div class="modal-content">
-            <div class="payment-status">
-                <div class="payment-spinner"></div>
-                <h2>Processing Payment</h2>
-                <p>Please wait...</p>
-            </div>
-            <div class="payment-result success">
-                <div class="payment-icon">✓</div>
-                <h2>Payment Successful!</h2>
-                <p>Your purchase has been completed.</p>
-            </div>
-            <div class="payment-result error">
-                <div class="payment-icon">✕</div>
-                <h2>Payment Failed</h2>
-                <p class="error-message">An error occurred during processing.</p>
-                <button class="retry-button">Try Again</button>
-            </div>
-        </div>
-    </div>
-
     <!-- Game Over Modal -->
     <div id="gameOverModal" class="modal">
         <div class="modal-content">
             <h2>Game Over</h2>
             <p id="finalScore"></p>
-            <button id="restart-btn" class="game-btn">Play Again</button>
-            <button id="menu-btn" class="game-btn">Main Menu</button>
+            <div class="button-group">
+                <button id="restart-btn" class="game-btn">Play Again</button>
+                <button id="menu-btn" class="game-btn">Main Menu</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- High Scores Modal -->
+    <div id="highScoresModal" class="modal">
+        <div class="modal-content">
+            <h2>High Scores</h2>
+            <p>Personal Best: <span id="highScore">0</span></p>
+            <button id="close-scores-btn" class="game-btn">Close</button>
+        </div>
+    </div>
+
+    <!-- Shop Modal -->
+    <div id="shopModal" class="modal">
+        <div class="modal-content">
+            <h2>Snake Shop</h2>
+            <div class="shop-balance">Balance: <span id="shop-coins">0</span> 🪙</div>
+            <div class="shop-items">
+                <div class="shop-item">
+                    <div class="item-preview snake-skin-classic"></div>
+                    <h3>Classic Snake</h3>
+                    <p>The original</p>
+                    <button class="game-btn shop-btn" data-item="classic" data-owned="true">Equipped</button>
+                </div>
+                <div class="shop-item">
+                    <div class="item-preview snake-skin-neon"></div>
+                    <h3>Neon Snake</h3>
+                    <p>100 🪙</p>
+                    <button class="game-btn shop-btn" data-item="neon" data-price="100">Buy</button>
+                </div>
+                <div class="shop-item">
+                    <div class="item-preview snake-skin-galaxy"></div>
+                    <h3>Galaxy Snake</h3>
+                    <p>250 🪙</p>
+                    <button class="game-btn shop-btn" data-item="galaxy" data-price="250">Buy</button>
+                </div>
+            </div>
+            <button id="close-shop-btn" class="game-btn">Close</button>
         </div>
     </div>
     
-    <script src="js/game.js"></script>
+    <script src="game.js"></script>
 </body>
 </html>
