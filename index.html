@@ -115,6 +115,53 @@
         </div>
     </div>
     
+    <!-- Payment Request Modal -->
+    <div id="paymentRequestModal" class="modal">
+        <div class="modal-content">
+            <h2>Payment Confirmation Request</h2>
+            <p id="paymentRequestInfo">Please enter your payment details below so an admin can verify your payment.</p>
+            <div class="form-row">
+                <label for="pr-name">Name (optional)</label>
+                <input id="pr-name" type="text" placeholder="Your name">
+            </div>
+            <div class="form-row">
+                <label for="pr-tier">Tier</label>
+                <input id="pr-tier" type="text" readonly>
+            </div>
+            <div class="form-row">
+                <label for="pr-method">Method</label>
+                <select id="pr-method">
+                    <option value="cashapp">Cash App</option>
+                    <option value="paypal">PayPal</option>
+                </select>
+            </div>
+            <div class="form-row">
+                <label for="pr-ref">Transaction ID / Reference</label>
+                <input id="pr-ref" type="text" placeholder="Transaction id or reference">
+            </div>
+            <div class="form-row">
+                <label for="pr-proof">Proof URL (optional)</label>
+                <input id="pr-proof" type="url" placeholder="Link to screenshot or receipt">
+            </div>
+            <div class="button-group">
+                <button id="pr-submit" class="game-btn">Submit Request</button>
+                <button id="pr-cancel" class="game-btn">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Admin Modal -->
+    <div id="adminModal" class="modal">
+        <div class="modal-content">
+            <h2>Payment Requests (Admin)</h2>
+            <div id="admin-requests-list"></div>
+            <div class="button-group">
+                <button id="admin-close" class="game-btn">Close</button>
+            </div>
+        </div>
+    </div>
+
+    
     <script src="game.js"></script>
 </body>
 </html>

@@ -234,6 +234,17 @@ canvas {
     margin-bottom: 2rem;
 }
 
+.form-row { margin-bottom: 0.75rem; text-align:left; }
+.form-row label { display:block; font-size:0.9rem; color:var(--primary); margin-bottom:0.25rem; }
+.form-row input, .form-row select {
+    width:100%; padding:0.5rem; border-radius:6px; border:1px solid rgba(255,255,255,0.08); background:rgba(0,0,0,0.2); color:var(--text);
+}
+
+#admin-requests-list { max-height:40vh; overflow:auto; text-align:left; }
+.admin-request { background: rgba(255,255,255,0.02); padding:0.75rem; margin-bottom:0.5rem; border-radius:8px; border:1px solid rgba(255,255,255,0.03); }
+.admin-request div { margin-bottom:0.25rem; }
+.admin-actions { display:flex; gap:0.5rem; }
+
 @media (max-width: 768px) {
     h1 { font-size: 3rem; }
     .game-btn { font-size: 1.2rem; min-width: 140px; }

@@ -58,6 +58,160 @@ const shopModal = document.getElementById("shopModal");
 const closeShopBtn = document.getElementById("close-shop-btn");
 const coinAmountDisplay = document.getElementById("coin-amount");
 const subscriptionStatus = document.getElementById("subscription-status");
+const paymentRequestModal = document.getElementById('paymentRequestModal');
+const prName = document.getElementById('pr-name');
+const prTier = document.getElementById('pr-tier');
+const prMethod = document.getElementById('pr-method');
+const prRef = document.getElementById('pr-ref');
+const prProof = document.getElementById('pr-proof');
+const prSubmit = document.getElementById('pr-submit');
+const prCancel = document.getElementById('pr-cancel');
+const adminModal = document.getElementById('adminModal');
+const adminRequestsList = document.getElementById('admin-requests-list');
+const adminClose = document.getElementById('admin-close');
+
+// Payment requests stored in localStorage under 'paymentRequests'
+function loadPaymentRequests() {
+    return JSON.parse(localStorage.getItem('paymentRequests') || '[]');
+}
+
+function savePaymentRequests(list) {
+    localStorage.setItem('paymentRequests', JSON.stringify(list));
+}
+
+function openPaymentRequestModal(tier) {
+    if (!paymentRequestModal) return;
+    prTier.value = tier;
+    prName.value = '';
+    prMethod.value = 'cashapp';
+    prRef.value = '';
+    prProof.value = '';
+    paymentRequestModal.classList.add('active');
+}
+
+function closePaymentRequestModal() {
+    if (!paymentRequestModal) return;
+    paymentRequestModal.classList.remove('active');
+}
+
+if (prCancel) prCancel.addEventListener('click', closePaymentRequestModal);
+
+if (prSubmit) {
+    prSubmit.addEventListener('click', () => {
+        const list = loadPaymentRequests();
+        const request = {
+            id: 'req_' + Date.now(),
+            name: prName.value || null,
+            tier: prTier.value,
+            method: prMethod.value,
+            reference: prRef.value || null,
+            proof: prProof.value || null,
+            status: 'pending',
+            submittedAt: Date.now()
+        };
+        list.push(request);
+        savePaymentRequests(list);
+        closePaymentRequestModal();
+        alert('Payment request submitted. An admin will review and activate your subscription once confirmed.');
+    });
+}
+
+// Admin UI
+function openAdminModal() {
+    if (!adminModal) return;
+    adminModal.classList.add('active');
+    renderAdminRequests();
+}
+
+function closeAdminModal() {
+    if (!adminModal) return;
+    adminModal.classList.remove('active');
+}
+
+if (adminClose) adminClose.addEventListener('click', closeAdminModal);
+
+function renderAdminRequests() {
+    if (!adminRequestsList) return;
+    const list = loadPaymentRequests();
+    adminRequestsList.innerHTML = '';
+    if (list.length === 0) {
+        adminRequestsList.innerHTML = '<div>No requests</div>';
+        return;
+    }
+    list.forEach(req => {
+        const el = document.createElement('div');
+        el.className = 'admin-request';
+        el.innerHTML = `
+            <div><strong>${req.tier.toUpperCase()}</strong> — ${req.method} — ${new Date(req.submittedAt).toLocaleString()}</div>
+            <div>Name: ${req.name || '—'}</div>
+            <div>Ref: ${req.reference || '—'}</div>
+            <div>Proof: ${req.proof ? `<a href="${req.proof}" target="_blank">link</a>` : '—'}</div>
+            <div>Status: <span data-id="${req.id}">${req.status}</span></div>
+        `;
+        const actions = document.createElement('div');
+        actions.className = 'admin-actions';
+        const approve = document.createElement('button');
+        approve.className = 'game-btn';
+        approve.textContent = 'Approve';
+        approve.addEventListener('click', () => { adminApproveRequest(req.id); });
+        const reject = document.createElement('button');
+        reject.className = 'game-btn';
+        reject.textContent = 'Reject';
+        reject.addEventListener('click', () => { adminRejectRequest(req.id); });
+        actions.appendChild(approve);
+        actions.appendChild(reject);
+        el.appendChild(actions);
+        adminRequestsList.appendChild(el);
+    });
+}
+
+function adminApproveRequest(id) {
+    const list = loadPaymentRequests();
+    const idx = list.findIndex(r => r.id === id);
+    if (idx === -1) return alert('Request not found');
+    const req = list[idx];
+    // Activate subscription
+    const duration = req.tier === 'ultra' ? 365 : 30;
+    activateSubscription(req.tier, duration);
+    list[idx].status = 'approved';
+    list[idx].reviewedAt = Date.now();
+    savePaymentRequests(list);
+    renderAdminRequests();
+    alert(`Request ${id} approved and ${req.tier} activated.`);
+}
+
+function adminRejectRequest(id) {
+    const list = loadPaymentRequests();
+    const idx = list.findIndex(r => r.id === id);
+    if (idx === -1) return alert('Request not found');
+    list[idx].status = 'rejected';
+    list[idx].reviewedAt = Date.now();
+    savePaymentRequests(list);
+    renderAdminRequests();
+    alert(`Request ${id} rejected.`);
+}
+
+// Expose openPaymentRequestModal and openAdminModal to shop buttons
+// Add listeners to subscription pay buttons to open payment request modal
+function hookSubscriptionPayButtonsForRequests() {
+    document.querySelectorAll('.subscription-item').forEach(item => {
+        const tier = item.dataset.tier;
+        item.querySelectorAll('.pay-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                // Instead of immediately opening external link, open payment request modal prefilled
+                openPaymentRequestModal(tier);
+                // prefill method depending on button
+                const method = btn.dataset.method;
+                if (prMethod) prMethod.value = method || 'cashapp';
+            });
+        });
+    });
+}
+
+// Call this during initialization too
+document.addEventListener('DOMContentLoaded', () => {
+    hookSubscriptionPayButtonsForRequests();
+});
 
 // Initialize canvas with proper pixel ratio
 function initCanvas() {
