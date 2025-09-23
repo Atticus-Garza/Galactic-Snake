@@ -76,6 +76,7 @@ const adminClose = document.getElementById('admin-close');
 const exportDataBtn = document.getElementById('export-data-btn');
 const importDataBtn = document.getElementById('import-data-btn');
 const importFileInput = document.getElementById('importFile');
+const redeemCodeBtn = document.getElementById('redeem-code-btn');
 
 // Payment requests stored in localStorage under 'paymentRequests'
 function loadPaymentRequests() {
@@ -93,6 +94,8 @@ function openPaymentRequestModal(tier) {
     prMethod.value = 'cashapp';
     prRef.value = '';
     prProof.value = '';
+    if (prEmail) prEmail.value = '';
+    if (prAccount) prAccount.value = '';
     paymentRequestModal.classList.add('active');
 }
 
@@ -105,23 +108,43 @@ if (prCancel) prCancel.addEventListener('click', closePaymentRequestModal);
 
 if (prSubmit) {
     prSubmit.addEventListener('click', () => {
-        const list = loadPaymentRequests();
-        const request = {
-            id: 'req_' + Date.now(),
+        // Send request to server if available, otherwise fall back to local storage
+        const payload = {
             name: prName.value || null,
             email: prEmail.value || null,
             tier: prTier.value,
             method: prMethod.value,
             account: prAccount.value || null,
             reference: prRef.value || null,
-            proof: prProof.value || null,
-            status: 'pending',
-            submittedAt: Date.now()
+            proof: prProof.value || null
         };
-        list.push(request);
-        savePaymentRequests(list);
-        closePaymentRequestModal();
-        alert('Payment request submitted. An admin will review and activate your subscription once confirmed.');
+
+        const serverUrl = window.SERVER_URL || (window.location.origin + '/api');
+        // Try to POST to /api/request-payment
+        fetch((window.SERVER_BASE || '') + '/api/request-payment', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        }).then(r => r.json()).then(data => {
+            closePaymentRequestModal();
+            if (data && data.ok) {
+                alert('Payment request sent to admin. You will receive an email when approved.');
+            } else {
+                // fallback to local storage
+                const list = loadPaymentRequests();
+                const request = { id: 'req_' + Date.now(), ...payload, status: 'pending', submittedAt: Date.now() };
+                list.push(request);
+                savePaymentRequests(list);
+                alert('Server not available; request saved locally.');
+            }
+        }).catch(err => {
+            const list = loadPaymentRequests();
+            const request = { id: 'req_' + Date.now(), ...payload, status: 'pending', submittedAt: Date.now() };
+            list.push(request);
+            savePaymentRequests(list);
+            closePaymentRequestModal();
+            alert('Server unreachable — request saved locally.');
+        });
     });
 }
 
@@ -222,6 +245,23 @@ function hookSubscriptionPayButtonsForRequests() {
 // Call this during initialization too
 document.addEventListener('DOMContentLoaded', () => {
     hookSubscriptionPayButtonsForRequests();
+    if (redeemCodeBtn) redeemCodeBtn.addEventListener('click', () => {
+        const code = prompt('Enter activation code you received by email:');
+        if (!code) return;
+        fetch((window.SERVER_BASE || '') + '/api/admin/verify-code', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ code })
+        }).then(r => r.json()).then(data => {
+            if (data && data.ok && data.tier) {
+                activateSubscription(data.tier, data.tier === 'ultra' ? 365 : 30);
+                alert(`${data.tier} activated!`);
+            } else {
+                alert('Invalid code');
+            }
+        }).catch(err => {
+            alert('Server unreachable — cannot verify code');
+        });
+    });
     // Export / Import handlers
     if (exportDataBtn) exportDataBtn.addEventListener('click', () => {
         const payload = {
